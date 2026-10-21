@@ -64,16 +64,16 @@ done
 printf 'rades test content\n' >content.txt
 openssl cms -sign -binary -cades -md sha256 -nodetach -outform DER \
   -in content.txt -signer signer-rsa.crt -inkey signer-rsa.key \
-  -certfile "$work/chain.pem" -out cades-bb.der
+  -certfile "$work/chain.pem" -out cades-bb.p7m
 
-openssl cms -verify -binary -inform DER -in cades-bb.der -CAfile root.crt -out /dev/null 2>/dev/null ||
+openssl cms -verify -binary -inform DER -in cades-bb.p7m -CAfile root.crt -out /dev/null 2>/dev/null ||
   { echo "the CAdES B-B fixture does not verify" >&2; exit 1; }
 
-offset=$(LC_ALL=C grep -obUa 'rades test content' cades-bb.der | cut -d: -f1 | head -n1)
-cp cades-bb.der cades-bb-tampered.der
-printf 'X' | dd of=cades-bb-tampered.der bs=1 seek="$offset" conv=notrunc 2>/dev/null
+offset=$(LC_ALL=C grep -obUa 'rades test content' cades-bb.p7m | cut -d: -f1 | head -n1)
+cp cades-bb.p7m cades-bb-tampered.p7m
+printf 'X' | dd of=cades-bb-tampered.p7m bs=1 seek="$offset" conv=notrunc 2>/dev/null
 
-if openssl cms -verify -binary -inform DER -in cades-bb-tampered.der -CAfile root.crt -out /dev/null 2>/dev/null; then
+if openssl cms -verify -binary -inform DER -in cades-bb-tampered.p7m -CAfile root.crt -out /dev/null 2>/dev/null; then
   echo "the tampered fixture still verifies" >&2
   exit 1
 fi
