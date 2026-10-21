@@ -26,22 +26,50 @@ fn age_hash() -> Vec<u8> {
     ]
 }
 
-fn pending(policy: Option<SignaturePolicy>) -> cades::PendingSignature {
-    let options = policy.map_or_else(Options::default, |p| Options::default().signature_policy(p));
+fn options(policy: Option<SignaturePolicy>) -> Options {
+    policy.map_or_else(Options::default, |p| Options::default().signature_policy(p))
+}
+
+fn pending_rsa(content: Content<'_>, options: &Options) -> cades::PendingSignature {
     cades::sign(
-        Content::Detached(&common::read("cades/content.txt")),
+        content,
         &common::certificate("signer-rsa"),
         RSA_SHA256,
         SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
-        &options,
+        options,
     )
     .unwrap()
 }
 
-fn sign(policy: Option<SignaturePolicy>) -> Vec<u8> {
-    let pending = pending(policy);
+fn sign_rsa(content: Content<'_>, options: &Options) -> Vec<u8> {
+    let pending = pending_rsa(content, options);
     let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
     pending.complete(&[value]).unwrap()
+}
+
+fn pending(policy: Option<SignaturePolicy>) -> cades::PendingSignature {
+    pending_rsa(
+        Content::Detached(&common::read("cades/content.txt")),
+        &options(policy),
+    )
+}
+
+fn sign(policy: Option<SignaturePolicy>) -> Vec<u8> {
+    sign_rsa(
+        Content::Detached(&common::read("cades/content.txt")),
+        &options(policy),
+    )
+}
+
+fn tampered(signature: &[u8]) -> Vec<u8> {
+    let mut signature = signature.to_vec();
+    let at = signature
+        .windows(10)
+        .position(|w| w == b"2610211200")
+        .unwrap()
+        + 3;
+    signature[at] = b'1';
+    signature
 }
 
 fn policy_attribute(pending: &cades::PendingSignature) -> Option<Vec<u8>> {
@@ -127,13 +155,7 @@ fn the_age_policy_matches_the_golden_vector() {
 
 #[test]
 fn the_tampered_age_policy_signature_matches_its_golden_vector() {
-    let mut signature = sign(Some(SignaturePolicy::age_v1_9()));
-    let at = signature
-        .windows(10)
-        .position(|w| w == b"2610211200")
-        .unwrap()
-        + 3;
-    signature[at] = b'1';
+    let signature = tampered(&sign(Some(SignaturePolicy::age_v1_9())));
     common::assert_golden("cades/bb-detached-rsa-sha256-age-tampered.p7m", &signature);
 }
 
@@ -208,18 +230,6 @@ fn a_hash_that_does_not_fit_its_algorithm_is_rejected_in_phase_1() {
     );
 }
 
-#[test]
-fn decode_rejects_a_malformed_policy_attribute() {
-    let mut signature = sign(Some(SignaturePolicy::age_v1_9()));
-    let at = signature
-        .windows(AGE_URL.len())
-        .position(|w| w == AGE_URL.as_bytes())
-        .unwrap();
-    // IA5String tag turned into a UTF8String tag
-    signature[at - 2] = 0x0c;
-    assert!(cades::decode(&signature).is_err());
-}
-
 const ECDSA_SHA256: SignatureAlgorithm = SignatureAlgorithm::Ecdsa(DigestAlgorithm::Sha256);
 
 fn age() -> Options {
@@ -237,30 +247,6 @@ fn sign_ecdsa(content: Content<'_>, options: &Options) -> Vec<u8> {
     .unwrap();
     let value = common::sign_ecdsa("signer-ecdsa", &pending.data_to_sign()[0]);
     pending.complete(&[value]).unwrap()
-}
-
-fn sign_rsa(content: Content<'_>, options: &Options) -> Vec<u8> {
-    let pending = cades::sign(
-        content,
-        &common::certificate("signer-rsa"),
-        RSA_SHA256,
-        SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
-        options,
-    )
-    .unwrap();
-    let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
-    pending.complete(&[value]).unwrap()
-}
-
-fn tampered(signature: &[u8]) -> Vec<u8> {
-    let mut signature = signature.to_vec();
-    let at = signature
-        .windows(10)
-        .position(|w| w == b"2610211200")
-        .unwrap()
-        + 3;
-    signature[at] = b'1';
-    signature
 }
 
 fn assert_age(signature: &[u8]) {
@@ -375,6 +361,7 @@ fn a_malformed_policy_attribute_is_an_error_not_a_panic() {
         .unwrap();
     for (name, at, byte) in [
         ("qualifier id tag", url - 15, 0x04),
+        ("spuri tag", url - 2, 0x0c),
         ("sha-1 algorithm id", sha1 - 2, 0x04),
         ("hash tag", hash - 2, 0x05),
         ("hash length", hash - 1, 0x13),
