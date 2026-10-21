@@ -1,0 +1,69 @@
+//! The crate's error type.
+
+use std::fmt;
+
+use crate::SignatureAlgorithm;
+
+/// Why rades could not produce a signature.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Error {
+    /// The certificate is not a DER or PEM X.509 certificate.
+    InvalidCertificate(String),
+    /// The signature algorithm does not fit the certificate's key.
+    AlgorithmMismatch {
+        /// The algorithm the caller named.
+        algorithm: SignatureAlgorithm,
+        /// The certificate's key type.
+        key: String,
+    },
+    /// The signing time cannot be encoded.
+    SigningTimeOutOfRange,
+    /// The number of signature values differs from the number of data to sign.
+    SignatureValueCount {
+        /// Data to sign in the pending signature.
+        expected: usize,
+        /// Signature values handed back.
+        actual: usize,
+    },
+    /// An RSA signature value is not as long as the key's modulus.
+    SignatureValueLength {
+        /// Modulus length in bytes.
+        expected: usize,
+        /// Signature value length in bytes.
+        actual: usize,
+    },
+    /// A DER structure could not be encoded.
+    Encoding(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidCertificate(reason) => write!(f, "invalid certificate: {reason}"),
+            Self::AlgorithmMismatch { algorithm, key } => {
+                write!(
+                    f,
+                    "signature algorithm {algorithm} does not fit the certificate's {key} key"
+                )
+            }
+            Self::SigningTimeOutOfRange => f.write_str("signing time out of range"),
+            Self::SignatureValueCount { expected, actual } => {
+                write!(f, "expected {expected} signature values, got {actual}")
+            }
+            Self::SignatureValueLength { expected, actual } => write!(
+                f,
+                "signature value is {actual} bytes long, the RSA modulus {expected}"
+            ),
+            Self::Encoding(reason) => write!(f, "der encoding failed: {reason}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<der::Error> for Error {
+    fn from(error: der::Error) -> Self {
+        Self::Encoding(error.to_string())
+    }
+}
