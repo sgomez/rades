@@ -1,0 +1,2 @@
+This is test content for the third-party CAdES B-B fixture.
+It exercises the signature without using any rades code.

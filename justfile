@@ -33,3 +33,8 @@ mutants *args:
 
 test-one filter:
     cargo test --quiet {{ filter }}
+
+# Run all oracles (DSS, AutoFirma) against the manifest.
+[positional-arguments]
+oracles *args:
+    bash scripts/oracles.sh {{ args }}

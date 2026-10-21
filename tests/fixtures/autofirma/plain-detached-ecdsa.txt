@@ -1,0 +1,2 @@
+AutoFirma detached ECDSA CAdES fixture content.
+This exercises the signature without using any rades code.

@@ -1,0 +1,11 @@
+[
+  {
+    "file": "test-pki/fixtures/third-party-cades-b-b.p7s",
+    "expected_indication": "TOTAL_PASSED",
+    "expected_level": "CAdES-BASELINE-B"
+  },
+  {
+    "file": "test-pki/fixtures/tampered-cades-b-b.p7s",
+    "expected_indication": "TOTAL_FAILED"
+  }
+]
