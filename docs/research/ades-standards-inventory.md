@@ -435,7 +435,7 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] F-49 CB-AdES (CBOR/COSE) baseline — TS 119 152-1 (new, 2026-03)
 - [ ] F-50 FacturaE (XAdES-EPES enveloped, policy v3.1/3.0, roles) — FacturaE policy v3.1 §1
 - [ ] F-51 FacturaE long-term (XAdES-X-L) — FacturaE policy v3.1 §2
-- [ ] F-52 AGE policy EPES (XAdES, CAdES, PAdES) with OID `…2.1.9` and its hash — AGE policy v1.9 §2.6, §3.1
+- [ ] F-52 AGE policy EPES (XAdES, CAdES, PAdES) with OID `…2.1.9` and its hash — AGE policy v1.9 §2.6, §3.1. CAdES is done (M2); XAdES and PAdES come in M11 and M8
 - [x] F-53 Bare CMS/PKCS#7 and raw PKCS#1 (`NONE`) as in AutoFirma — AutoFirma `AOSignConstants`
 
 ### Legacy forms (validation and augmentation)
@@ -485,7 +485,7 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] B-05 signer-location / SignatureProductionPlaceV2 / sigPl — 122-1 §5.2.5; 132-1 §5.2.5; 182-1 §5.2.4
 - [ ] B-06 Signer attributes: claimed, certified (attribute certs), signed assertions (incl. SAML) — 122-1 §5.2.6; 132-1 §5.2.6; 182-1 §5.2.5
 - [ ] B-07 Commitment types (6 ETSI OIDs and URIs, plus qualifiers) — TS 119 172-1 Annex B
-- [ ] B-08 Signature policy identifier, hash and qualifiers (SPURI, user notice, doc spec), implied policy — 122-1 §5.2.9; 132-1 §5.2.9; 182-1 §5.2.7
+- [x] B-08 Signature policy identifier, hash and qualifiers (SPURI, user notice, doc spec), implied policy — 122-1 §5.2.9; 132-1 §5.2.9; 182-1 §5.2.7
 - [ ] B-09 Signature policy store — 122-1 §5.2.10; 132-1 §5.2.10; 182-1 `sigPSt`
 - [ ] B-10 Machine-readable policies (XML, ASN.1) — TS 119 172-2, -3; TR 102 038, TR 102 272
 - [ ] B-11 Content / data-object time stamps — 122-1 §5.2.8; 132-1 §5.2.8; 182-1 `adoTst`

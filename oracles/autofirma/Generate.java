@@ -5,6 +5,7 @@
 //DEPS es.gob.afirma:afirma-crypto-cades-multi:1.8.2
 
 import es.gob.afirma.core.signers.CounterSignTarget;
+import es.gob.afirma.core.signers.ExtraParamsProcessor;
 import es.gob.afirma.signers.cades.AOCAdESSigner;
 import es.gob.afirma.signvalidation.SignValidity;
 import es.gob.afirma.signvalidation.SignValiderFactory;
@@ -38,6 +39,9 @@ public class Generate {
             String suffix = signer.name().substring("signer-".length());
             write(out, "attached-" + suffix + ".p7s", sign(cades, content, signer, "implicit"), null);
             write(out, "detached-" + suffix + ".p7s", sign(cades, content, signer, "explicit"), content);
+            Properties age = params("implicit");
+            age.setProperty("expPolicy", "FirmaAGE");
+            write(out, "attached-" + suffix + "-age.p7s", cades.sign(content, signer.algorithm(), signer.key(), signer.chain(), ExtraParamsProcessor.expandProperties(age, content, "CAdES")), null);
         }
 
         byte[] base = sign(cades, content, ecdsa, "implicit");
