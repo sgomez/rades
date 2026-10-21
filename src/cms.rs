@@ -22,6 +22,28 @@ pub(crate) const ID_SIGNING_CERTIFICATE_V2: ObjectIdentifier =
 pub(crate) const ID_CMS_ALGORITHM_PROTECTION: ObjectIdentifier =
     ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.52");
 
+pub(crate) const ID_MIME_TYPE: ObjectIdentifier = ObjectIdentifier::new_unwrap("0.4.0.1733.2.1");
+pub(crate) const ID_CONTENT_HINTS: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.4");
+pub(crate) const ID_CONTENT_IDENTIFIER: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.7");
+pub(crate) const ID_CONTENT_REFERENCE: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.10");
+
+#[derive(Sequence)]
+pub(crate) struct ContentHints {
+    #[asn1(optional = "true")]
+    pub(crate) description: Option<String>,
+    pub(crate) content_type: ObjectIdentifier,
+}
+
+#[derive(Sequence)]
+pub(crate) struct ContentReference {
+    pub(crate) content_type: ObjectIdentifier,
+    pub(crate) signed_content_identifier: OctetString,
+    pub(crate) originator_signature_value: OctetString,
+}
+
 #[derive(Sequence)]
 pub(crate) struct ContentInfo {
     pub(crate) content_type: ObjectIdentifier,

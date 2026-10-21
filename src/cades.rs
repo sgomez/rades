@@ -7,8 +7,9 @@ use x509_cert::ext::pkix::name::GeneralName;
 
 use crate::certificate::PublicKey;
 use crate::cms::{
-    CmsAlgorithmProtection, ContentInfo, EncapsulatedContentInfo, EssCertIdV2,
-    ID_CMS_ALGORITHM_PROTECTION, ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST, ID_SIGNED_DATA,
+    self, CmsAlgorithmProtection, ContentInfo, EncapsulatedContentInfo, EssCertIdV2,
+    ID_CMS_ALGORITHM_PROTECTION, ID_CONTENT_HINTS, ID_CONTENT_IDENTIFIER, ID_CONTENT_REFERENCE,
+    ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST, ID_MIME_TYPE, ID_SIGNED_DATA,
     ID_SIGNING_CERTIFICATE_V2, ID_SIGNING_TIME, IssuerAndSerialNumber, IssuerSerial, SignedData,
     SignerInfo, SigningCertificateV2,
 };
@@ -34,10 +35,95 @@ pub enum Content<'a> {
     },
 }
 
+/// Which certificates the `SignedData` carries.
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub enum Certificates {
+    /// The signer certificate only.
+    #[default]
+    Signer,
+    /// The signer certificate and these, typically its chain.
+    Chain(Vec<Certificate>),
+    /// No certificate.
+    None,
+}
+
+/// The `content-hints` attribute: what the signed content is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContentHints {
+    description: Option<String>,
+    content_type: ObjectIdentifier,
+}
+
+impl ContentHints {
+    /// A description, if any, and the content type of the signed content.
+    #[must_use]
+    pub fn new(description: Option<String>, content_type: ObjectIdentifier) -> Self {
+        Self {
+            description,
+            content_type,
+        }
+    }
+}
+
+/// The `content-reference` attribute: a link to another message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContentReference {
+    /// Content type of the referenced message.
+    pub content_type: ObjectIdentifier,
+    /// Its `content-identifier`.
+    pub signed_content_identifier: Vec<u8>,
+    /// The signature value of its originator.
+    pub originator_signature_value: Vec<u8>,
+}
+
 /// CAdES options beyond the signature algorithm and time.
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
-pub struct Options {}
+pub struct Options {
+    mime_type: Option<String>,
+    content_hints: Option<ContentHints>,
+    content_identifier: Option<Vec<u8>>,
+    content_reference: Option<ContentReference>,
+    certificates: Certificates,
+}
+
+impl Options {
+    /// Adds the `mime-type` signed attribute.
+    #[must_use]
+    pub fn mime_type(mut self, mime_type: impl Into<String>) -> Self {
+        self.mime_type = Some(mime_type.into());
+        self
+    }
+
+    /// Adds the `content-hints` signed attribute.
+    #[must_use]
+    pub fn content_hints(mut self, hints: ContentHints) -> Self {
+        self.content_hints = Some(hints);
+        self
+    }
+
+    /// Adds the `content-identifier` signed attribute.
+    #[must_use]
+    pub fn content_identifier(mut self, identifier: Vec<u8>) -> Self {
+        self.content_identifier = Some(identifier);
+        self
+    }
+
+    /// Adds the `content-reference` signed attribute.
+    #[must_use]
+    pub fn content_reference(mut self, reference: ContentReference) -> Self {
+        self.content_reference = Some(reference);
+        self
+    }
+
+    /// Chooses the certificates embedded in the `SignedData`.
+    #[must_use]
+    pub fn certificates(mut self, certificates: Certificates) -> Self {
+        self.certificates = certificates;
+        self
+    }
+}
 
 /// Phase 1 done: the data to sign, waiting for its signature value.
 #[derive(Debug)]
@@ -46,6 +132,7 @@ pub struct PendingSignature {
     signed_attrs: SetOfVec<Attribute>,
     embedded_content: Option<Vec<u8>>,
     certificate: Certificate,
+    embedded: Vec<x509_cert::Certificate>,
     modulus_len: usize,
 }
 
@@ -60,7 +147,6 @@ pub fn sign(
     signing_time: SigningTime,
     options: &Options,
 ) -> Result<PendingSignature, Error> {
-    let _ = options;
     let modulus_len = match (algorithm, certificate.public_key()?) {
         (SignatureAlgorithm::RsaPkcs1v15(_), PublicKey::Rsa { modulus_len }) => modulus_len,
         (_, key) => {
@@ -88,7 +174,7 @@ pub fn sign(
             (digest.to_vec(), None)
         }
     };
-    let signed_attrs = SetOfVec::try_from(vec![
+    let mut attributes = vec![
         attribute(ID_CONTENT_TYPE, &ID_DATA)?,
         attribute(ID_MESSAGE_DIGEST, &OctetString::new(content_digest)?)?,
         attribute(ID_SIGNING_TIME, &signing_time.to_time())?,
@@ -103,14 +189,68 @@ pub fn sign(
                 signature_algorithm: algorithm.identifier(),
             },
         )?,
-    ])?;
+    ];
+    attributes.extend(optional_attributes(options)?);
+    let signed_attrs = SetOfVec::try_from(attributes)?;
     Ok(PendingSignature {
         data_to_sign: vec![DataToSign::new(signed_attrs.to_der()?, algorithm)],
         signed_attrs,
         embedded_content: embedded,
         certificate: certificate.clone(),
+        embedded: embedded_certificates(certificate, &options.certificates),
         modulus_len,
     })
+}
+
+fn optional_attributes(options: &Options) -> Result<Vec<Attribute>, Error> {
+    let mut attributes = Vec::new();
+    if let Some(mime_type) = &options.mime_type {
+        attributes.push(attribute(ID_MIME_TYPE, mime_type)?);
+    }
+    if let Some(hints) = &options.content_hints {
+        attributes.push(attribute(
+            ID_CONTENT_HINTS,
+            &cms::ContentHints {
+                description: hints.description.clone(),
+                content_type: hints.content_type,
+            },
+        )?);
+    }
+    if let Some(identifier) = &options.content_identifier {
+        attributes.push(attribute(
+            ID_CONTENT_IDENTIFIER,
+            &OctetString::new(identifier.as_slice())?,
+        )?);
+    }
+    if let Some(reference) = &options.content_reference {
+        attributes.push(attribute(
+            ID_CONTENT_REFERENCE,
+            &cms::ContentReference {
+                content_type: reference.content_type,
+                signed_content_identifier: OctetString::new(
+                    reference.signed_content_identifier.as_slice(),
+                )?,
+                originator_signature_value: OctetString::new(
+                    reference.originator_signature_value.as_slice(),
+                )?,
+            },
+        )?);
+    }
+    Ok(attributes)
+}
+
+fn embedded_certificates(
+    signer: &Certificate,
+    certificates: &Certificates,
+) -> Vec<x509_cert::Certificate> {
+    match certificates {
+        Certificates::Signer => vec![signer.inner().clone()],
+        Certificates::Chain(chain) => std::iter::once(signer)
+            .chain(chain.iter().filter(|c| *c != signer))
+            .map(|c| c.inner().clone())
+            .collect(),
+        Certificates::None => Vec::new(),
+    }
 }
 
 fn attribute(oid: ObjectIdentifier, value: &impl Encode) -> Result<Attribute, Error> {
@@ -184,7 +324,11 @@ impl PendingSignature {
                 e_content_type: ID_DATA,
                 e_content: self.embedded_content.map(OctetString::new).transpose()?,
             },
-            certificates: Some(SetOfVec::try_from(vec![self.certificate.inner().clone()])?),
+            certificates: if self.embedded.is_empty() {
+                None
+            } else {
+                Some(SetOfVec::try_from(self.embedded)?)
+            },
             signer_infos: SetOfVec::try_from(vec![signer_info])?,
         };
         Ok(ContentInfo {
