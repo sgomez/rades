@@ -6,4 +6,4 @@ CAdES signatures made by AutoFirma 1.8.2 with the test PKI (`../pki`) over `../p
 
 `oracles/autofirma/Generate.java` regenerates them: `jbang oracles/autofirma/Generate.java tests/pki tests/autofirma`. It fails if AutoFirma does not verify its own output.
 
-`manifest.tsv` lists the attached signatures, the only ones the oracles check today; DSS cannot take detached content and sees two signatures in the co-signed and countersigned files, which the manifest does not model yet.
+`manifest.tsv` lists the attached signatures, the only ones the oracles check today. DSS can validate detached CAdES (`SignedDocumentValidator.setDetachedContents`), but neither `Dss.java` nor the manifest has a way to pass the detached content yet; DSS also sees two signatures in the co-signed and countersigned files, which the manifest does not model yet.
