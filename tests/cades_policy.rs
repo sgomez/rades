@@ -6,8 +6,9 @@ use der::asn1::{ObjectIdentifier, SetOfVec};
 use der::{Decode, Encode};
 use rades::cades::{self, Certificates, Content, Options};
 use rades::{
-    DigestAlgorithm, ExplicitPolicy, PolicyHashAlgorithm, PolicyQualifier, SignatureAlgorithm,
-    SignaturePolicy, SigningTime,
+    DigestAlgorithm, DisplayText, DocSpecification, ExplicitPolicy, NoticeReference,
+    PolicyHashAlgorithm, PolicyQualifier, SignatureAlgorithm, SignaturePolicy, SigningTime,
+    UserNotice,
 };
 use sha2::Digest;
 use x509_cert::attr::Attribute;
@@ -62,22 +63,60 @@ fn tlv(tag: u8, content: &[u8]) -> Vec<u8> {
     der
 }
 
-/// `SignaturePolicyId` of the AGE policy, written out from EN 319 122-1 section 5.2.9.
-fn age_der() -> Vec<u8> {
+/// `SignaturePolicyId` of the AGE policy with the given `SigPolicyQualifierInfo`, written out
+/// from EN 319 122-1 section 5.2.9.
+fn age_policy_der(qualifiers: &[Vec<u8>]) -> Vec<u8> {
     let id = [
         0x06, 0x0a, 0x60, 0x85, 0x54, 0x01, 0x03, 0x01, 0x01, 0x02, 0x01, 0x09,
     ];
     // SHA-1 without parameters, then the hash
     let sha1 = tlv(0x30, &[0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a]);
     let hash = tlv(0x30, &[sha1, tlv(0x04, &age_hash())].concat());
-    let spuri_id = [
-        0x06, 0x0b, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x10, 0x05, 0x01,
+    let mut body = [&id[..], &hash].concat();
+    if !qualifiers.is_empty() {
+        body.extend(tlv(0x30, &qualifiers.concat()));
+    }
+    tlv(0x30, &body)
+}
+
+/// A `SigPolicyQualifierInfo` of the `id-spq` arc `1.2.840.113549.1.9.16.5`, with the given arc.
+fn pkcs9_qualifier(arc: u8, qualifier: &[u8]) -> Vec<u8> {
+    let id = [
+        0x06, 0x0b, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x09, 0x10, 0x05, arc,
     ];
-    let spuri = tlv(
-        0x30,
-        &[&spuri_id[..], &tlv(0x16, AGE_URL.as_bytes())].concat(),
-    );
-    tlv(0x30, &[&id[..], &hash, &tlv(0x30, &spuri)].concat())
+    tlv(0x30, &[&id[..], qualifier].concat())
+}
+
+fn age_der() -> Vec<u8> {
+    age_policy_der(&[pkcs9_qualifier(1, &tlv(0x16, AGE_URL.as_bytes()))])
+}
+
+fn age_with(qualifiers: &[PolicyQualifier]) -> SignaturePolicy {
+    qualifiers
+        .iter()
+        .cloned()
+        .fold(
+            ExplicitPolicy::new(
+                ObjectIdentifier::new_unwrap(AGE_OID),
+                PolicyHashAlgorithm::Sha1,
+                age_hash(),
+            ),
+            ExplicitPolicy::qualifier,
+        )
+        .into()
+}
+
+fn encoded(qualifiers: &[PolicyQualifier]) -> Vec<u8> {
+    policy_attribute(&pending(Some(age_with(qualifiers)))).unwrap()
+}
+
+fn decoded(policy: &SignaturePolicy) -> SignaturePolicy {
+    cades::decode(&sign(Some(policy.clone())))
+        .unwrap()
+        .signers()[0]
+        .signature_policy()
+        .unwrap()
+        .clone()
 }
 
 #[test]
@@ -344,4 +383,152 @@ fn a_malformed_policy_attribute_is_an_error_not_a_panic() {
         copy[at] = byte;
         assert!(cades::decode(&copy).is_err(), "{name}");
     }
+}
+
+#[test]
+fn a_user_notice_is_encoded_as_in_en_319_122_1() {
+    let notice = UserNotice {
+        notice_ref: Some(NoticeReference {
+            organization: DisplayText::Utf8("Org".to_owned()),
+            notice_numbers: vec![1, 300],
+        }),
+        explicit_text: Some(DisplayText::Visible("Text".to_owned())),
+    };
+    let numbers = tlv(0x30, &[0x02, 0x01, 0x01, 0x02, 0x02, 0x01, 0x2c]);
+    let reference = tlv(0x30, &[tlv(0x0c, b"Org"), numbers].concat());
+    let body = [reference, tlv(0x1a, b"Text")].concat();
+    assert_eq!(
+        encoded(&[PolicyQualifier::UserNotice(notice)]),
+        age_policy_der(&[pkcs9_qualifier(2, &tlv(0x30, &body))])
+    );
+}
+
+#[test]
+fn a_user_notice_may_hold_only_text_or_nothing() {
+    let text = UserNotice {
+        notice_ref: None,
+        explicit_text: Some(DisplayText::Bmp("Hi".to_owned())),
+    };
+    assert_eq!(
+        encoded(&[PolicyQualifier::UserNotice(text)]),
+        age_policy_der(&[pkcs9_qualifier(
+            2,
+            &tlv(0x30, &tlv(0x1e, &[0, b'H', 0, b'i']))
+        )])
+    );
+    let empty = UserNotice {
+        notice_ref: None,
+        explicit_text: None,
+    };
+    assert_eq!(
+        encoded(&[PolicyQualifier::UserNotice(empty)]),
+        age_policy_der(&[pkcs9_qualifier(2, &tlv(0x30, &[]))])
+    );
+}
+
+#[test]
+fn a_document_specification_is_encoded_as_in_en_319_122_1() {
+    // id-spq-ets-docspec is 0.4.0.19122.2.1
+    let id = [0x06, 0x07, 0x04, 0x00, 0x81, 0x95, 0x32, 0x02, 0x01];
+    let info = |choice: &[u8]| tlv(0x30, &[&id[..], choice].concat());
+    let oid = DocSpecification::Oid(ObjectIdentifier::new_unwrap("1.2.3"));
+    assert_eq!(
+        encoded(&[PolicyQualifier::DocSpecification(oid)]),
+        age_policy_der(&[info(&[0x06, 0x02, 0x2a, 0x03])])
+    );
+    let uri = DocSpecification::Uri("urn:x".to_owned());
+    assert_eq!(
+        encoded(&[PolicyQualifier::DocSpecification(uri)]),
+        age_policy_der(&[info(&tlv(0x16, b"urn:x"))])
+    );
+}
+
+#[test]
+fn an_implied_policy_is_a_null() {
+    let attribute = policy_attribute(&pending(Some(SignaturePolicy::Implied))).unwrap();
+    assert_eq!(attribute, [0x05, 0x00]);
+}
+
+#[test]
+fn qualifiers_keep_the_order_the_caller_gives() {
+    let qualifiers = [
+        PolicyQualifier::DocSpecification(DocSpecification::Uri("urn:x".to_owned())),
+        PolicyQualifier::Spuri(AGE_URL.to_owned()),
+        PolicyQualifier::UserNotice(UserNotice {
+            notice_ref: None,
+            explicit_text: Some(DisplayText::Utf8("ñ".to_owned())),
+        }),
+        PolicyQualifier::Spuri("urn:y".to_owned()),
+    ];
+    let policy = age_with(&qualifiers);
+    let SignaturePolicy::Explicit(found) = decoded(&policy) else {
+        panic!("explicit policy expected")
+    };
+    assert_eq!(found.qualifiers(), qualifiers);
+}
+
+#[test]
+fn decode_returns_each_shape_as_it_was_signed() {
+    let full = age_with(&[PolicyQualifier::UserNotice(UserNotice {
+        notice_ref: Some(NoticeReference {
+            organization: DisplayText::Bmp("Organización".to_owned()),
+            notice_numbers: vec![0, 7],
+        }),
+        explicit_text: Some(DisplayText::Visible("Notice".to_owned())),
+    })]);
+    for policy in [full, SignaturePolicy::Implied] {
+        assert_eq!(decoded(&policy), policy);
+    }
+}
+
+#[test]
+fn policy_hashes_in_sha_2_and_sha_3_are_accepted() {
+    for digest in [DigestAlgorithm::Sha384, DigestAlgorithm::Sha3_256] {
+        let len = match digest {
+            DigestAlgorithm::Sha384 => 48,
+            _ => 32,
+        };
+        let policy = SignaturePolicy::from(ExplicitPolicy::new(
+            ObjectIdentifier::new_unwrap(AGE_OID),
+            PolicyHashAlgorithm::Digest(digest),
+            vec![9; len],
+        ));
+        assert_eq!(decoded(&policy), policy);
+    }
+}
+
+#[test]
+fn a_notice_text_outside_1_to_200_characters_is_rejected_in_phase_1() {
+    for text in [String::new(), "a".repeat(201)] {
+        let notice = UserNotice {
+            notice_ref: None,
+            explicit_text: Some(DisplayText::Utf8(text.clone())),
+        };
+        let result = cades::sign(
+            Content::Detached(b"content"),
+            &common::certificate("signer-rsa"),
+            RSA_SHA256,
+            SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
+            &Options::default().signature_policy(age_with(&[PolicyQualifier::UserNotice(notice)])),
+        );
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            format!(
+                "policy notice text is {} characters long, expected 1 to 200",
+                text.len()
+            )
+        );
+    }
+}
+
+#[test]
+fn decode_rejects_a_malformed_user_notice() {
+    let mut signature = sign(Some(age_with(&[PolicyQualifier::UserNotice(UserNotice {
+        notice_ref: None,
+        explicit_text: Some(DisplayText::Utf8("Notice".to_owned())),
+    })])));
+    let at = signature.windows(6).position(|w| w == b"Notice").unwrap();
+    // UTF8String tag turned into an IA5String tag, not a DisplayText choice
+    signature[at - 2] = 0x16;
+    assert!(cades::decode(&signature).is_err());
 }

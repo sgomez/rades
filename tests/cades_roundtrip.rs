@@ -9,7 +9,11 @@ use proptest::prelude::*;
 use rades::cades::{
     self, Certificates, Content, ContentHints, ContentReference, Options, SigningCertificate,
 };
-use rades::{DigestAlgorithm, SignatureAlgorithm, SigningTime};
+use rades::{
+    DigestAlgorithm, DisplayText, DocSpecification, ExplicitPolicy, NoticeReference,
+    PolicyHashAlgorithm, PolicyQualifier, SignatureAlgorithm, SignaturePolicy, SigningTime,
+    UserNotice,
+};
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{Pkcs1v15Sign, Pss, RsaPublicKey};
 use sha2::Digest as _;
@@ -119,6 +123,62 @@ fn text() -> impl Strategy<Value = String> {
     "[ -~]{0,30}"
 }
 
+fn display_text() -> impl Strategy<Value = DisplayText> {
+    prop_oneof![
+        "[ -~]{1,30}".prop_map(DisplayText::Visible),
+        "[a-zñ€ ]{1,30}".prop_map(DisplayText::Bmp),
+        "[a-zñ€ ]{1,30}".prop_map(DisplayText::Utf8),
+    ]
+}
+
+fn qualifier() -> impl Strategy<Value = PolicyQualifier> {
+    let notice = (
+        prop::option::of((display_text(), prop::collection::vec(any::<u32>(), 0..4))),
+        prop::option::of(display_text()),
+    )
+        .prop_map(|(reference, explicit_text)| UserNotice {
+            notice_ref: reference.map(|(organization, notice_numbers)| NoticeReference {
+                organization,
+                notice_numbers,
+            }),
+            explicit_text,
+        });
+    prop_oneof![
+        text().prop_map(PolicyQualifier::Spuri),
+        notice.prop_map(PolicyQualifier::UserNotice),
+        object_identifier()
+            .prop_map(|oid| PolicyQualifier::DocSpecification(DocSpecification::Oid(oid))),
+        text().prop_map(|uri| PolicyQualifier::DocSpecification(DocSpecification::Uri(uri))),
+    ]
+}
+
+fn signature_policy() -> impl Strategy<Value = SignaturePolicy> {
+    let algorithm = prop_oneof![
+        Just(PolicyHashAlgorithm::Sha1),
+        (0..DIGESTS.len()).prop_map(|i| PolicyHashAlgorithm::Digest(DIGESTS[i])),
+    ];
+    let explicit = (
+        object_identifier(),
+        algorithm,
+        any::<u8>(),
+        prop::collection::vec(qualifier(), 0..5),
+    )
+        .prop_map(|(identifier, algorithm, byte, qualifiers)| {
+            let len = match algorithm {
+                PolicyHashAlgorithm::Digest(digest) => hash(digest, &[]).len(),
+                _ => 20,
+            };
+            qualifiers.into_iter().fold(
+                ExplicitPolicy::new(identifier, algorithm, vec![byte; len]),
+                ExplicitPolicy::qualifier,
+            )
+        });
+    prop_oneof![
+        Just(SignaturePolicy::Implied),
+        explicit.prop_map(SignaturePolicy::from),
+    ]
+}
+
 #[derive(Debug, Clone)]
 struct Case {
     attached: bool,
@@ -131,6 +191,7 @@ struct Case {
     hints: Option<(Option<String>, ObjectIdentifier)>,
     identifier: Option<Vec<u8>>,
     reference: Option<(ObjectIdentifier, Vec<u8>, Vec<u8>)>,
+    policy: Option<SignaturePolicy>,
     /// 0 signer only, 1 with its chain, 2 none.
     certificates: u8,
 }
@@ -149,12 +210,13 @@ fn case() -> impl Strategy<Value = Case> {
         prop::option::of((prop::option::of(text()), object_identifier())),
         prop::option::of(bytes()),
         prop::option::of((object_identifier(), bytes(), bytes())),
+        prop::option::of(signature_policy()),
         0..3u8,
     );
     (basics, attributes).prop_map(
         |(
             (attached, content, signing_time, signer, pss, digest),
-            (mime_type, hints, identifier, reference, certificates),
+            (mime_type, hints, identifier, reference, policy, certificates),
         )| Case {
             attached,
             content,
@@ -170,6 +232,7 @@ fn case() -> impl Strategy<Value = Case> {
             hints,
             identifier,
             reference,
+            policy,
             certificates,
         },
     )
@@ -309,6 +372,9 @@ fn options(case: &Case) -> Options {
             signed_content_identifier: identifier.clone(),
             originator_signature_value: originator.clone(),
         });
+    }
+    if let Some(policy) = &case.policy {
+        options = options.signature_policy(policy.clone());
     }
     options.certificates(match case.certificates {
         0 => Certificates::Signer,
@@ -451,6 +517,8 @@ fn round_trip(case: &Case) {
         case.identifier
     );
     check_reference(case.reference.as_ref(), single(CONTENT_REFERENCE));
+
+    assert_eq!(info.signature_policy(), case.policy.as_ref());
 
     verify(
         signer,
