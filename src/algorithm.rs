@@ -28,6 +28,15 @@ pub enum DigestAlgorithm {
 }
 
 impl DigestAlgorithm {
+    pub(crate) const ALL: [Self; 6] = [
+        Self::Sha256,
+        Self::Sha384,
+        Self::Sha512,
+        Self::Sha3_256,
+        Self::Sha3_384,
+        Self::Sha3_512,
+    ];
+
     pub(crate) fn digest(self, data: &[u8]) -> Vec<u8> {
         match self {
             Self::Sha256 => sha2::Sha256::digest(data).to_vec(),

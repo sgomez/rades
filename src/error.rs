@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::{DigestAlgorithm, SignatureAlgorithm};
+use crate::{DigestAlgorithm, PolicyHashAlgorithm, SignatureAlgorithm};
 
 /// Why rades could not produce a signature.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,6 +61,15 @@ pub enum Error {
         /// The signature algorithm's digest algorithm.
         expected: DigestAlgorithm,
     },
+    /// A signature policy hash is not as long as its algorithm's output.
+    PolicyHashLength {
+        /// The algorithm the caller named.
+        algorithm: PolicyHashAlgorithm,
+        /// Output length in bytes.
+        expected: usize,
+        /// Hash length in bytes.
+        actual: usize,
+    },
     /// The bytes to decode are not a CMS signature.
     MalformedSignature(String),
     /// A decoded signature uses a broken digest algorithm.
@@ -111,6 +120,14 @@ impl fmt::Display for Error {
             Self::DigestAlgorithmMismatch { given, expected } => write!(
                 f,
                 "{given} digest given, the signature algorithm digests with {expected}"
+            ),
+            Self::PolicyHashLength {
+                algorithm,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{algorithm} policy hash is {actual} bytes long, expected {expected}"
             ),
             Self::MalformedSignature(reason) => write!(f, "malformed signature: {reason}"),
             Self::RejectedDigestAlgorithm(name) => write!(f, "rejected digest algorithm {name}"),
