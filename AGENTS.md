@@ -16,6 +16,7 @@ The decisions live in `docs/adr/`. The ones to know before touching anything:
 6. **English everywhere:** code, docs, comments, error messages, commits, issues and PRs. Error messages follow the Rust API Guidelines: lowercase, no trailing period.
 7. **Comments: the default is none.** The name is the comment. `//!` for a module and `///` for a public item, one line each; `//` in a body only when it says what the code cannot.
 8. **Don't write what rots:** no counters or lists that already live in the code. Point at the source.
+9. **Tests live outside the module they test:** `src/foo/tests.rs`, declared in `src/foo.rs` as `#[cfg(test)] mod tests;`. Tests through the public API go in `tests/`.
 
 ## Personal data
 
@@ -28,7 +29,7 @@ Everything goes through the `justfile`: bare `just <recipe>`, one command per ca
 | When | What |
 | --- | --- |
 | On every red → green | `just test-one <filter>` |
-| Before committing | `just fmt`. Lefthook runs `just fmt-check` on commit |
+| Before committing | `just fmt`. Lefthook runs `just fmt-check` and `just file-tokens` on commit |
 | Before pushing | The pre-push hook runs `just check` |
 | On opening the PR | The CI's verdict: `just check` on Linux, `just test` on macOS and Windows |
 
