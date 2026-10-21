@@ -6,34 +6,53 @@ use der::asn1::{Any, Null, ObjectIdentifier};
 use sha2::Digest as _;
 use x509_cert::spki::AlgorithmIdentifierOwned;
 
-const SHA256: ObjectIdentifier = ObjectIdentifier::new_unwrap("2.16.840.1.101.3.4.2.1");
-const SHA256_WITH_RSA: ObjectIdentifier = ObjectIdentifier::new_unwrap("1.2.840.113549.1.1.11");
-
 /// Digest algorithm of a signature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum DigestAlgorithm {
     /// SHA-256 (FIPS 180-4).
     Sha256,
+    /// SHA-384 (FIPS 180-4).
+    Sha384,
+    /// SHA-512 (FIPS 180-4).
+    Sha512,
+    /// SHA3-256 (FIPS 202).
+    Sha3_256,
+    /// SHA3-384 (FIPS 202).
+    Sha3_384,
+    /// SHA3-512 (FIPS 202).
+    Sha3_512,
 }
 
 impl DigestAlgorithm {
     pub(crate) fn digest(self, data: &[u8]) -> Vec<u8> {
         match self {
             Self::Sha256 => sha2::Sha256::digest(data).to_vec(),
+            Self::Sha384 => sha2::Sha384::digest(data).to_vec(),
+            Self::Sha512 => sha2::Sha512::digest(data).to_vec(),
+            Self::Sha3_256 => sha3::Sha3_256::digest(data).to_vec(),
+            Self::Sha3_384 => sha3::Sha3_384::digest(data).to_vec(),
+            Self::Sha3_512 => sha3::Sha3_512::digest(data).to_vec(),
         }
     }
 
     pub(crate) fn output_len(self) -> usize {
         match self {
-            Self::Sha256 => 32,
+            Self::Sha256 | Self::Sha3_256 => 32,
+            Self::Sha384 | Self::Sha3_384 => 48,
+            Self::Sha512 | Self::Sha3_512 => 64,
         }
     }
 
     pub(crate) fn oid(self) -> ObjectIdentifier {
-        match self {
-            Self::Sha256 => SHA256,
-        }
+        ObjectIdentifier::new_unwrap(match self {
+            Self::Sha256 => "2.16.840.1.101.3.4.2.1",
+            Self::Sha384 => "2.16.840.1.101.3.4.2.2",
+            Self::Sha512 => "2.16.840.1.101.3.4.2.3",
+            Self::Sha3_256 => "2.16.840.1.101.3.4.2.8",
+            Self::Sha3_384 => "2.16.840.1.101.3.4.2.9",
+            Self::Sha3_512 => "2.16.840.1.101.3.4.2.10",
+        })
     }
 
     /// Identifier with absent parameters, as RFC 5754 asks for CMS.
@@ -57,6 +76,11 @@ impl fmt::Display for DigestAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Sha256 => "SHA-256",
+            Self::Sha384 => "SHA-384",
+            Self::Sha512 => "SHA-512",
+            Self::Sha3_256 => "SHA3-256",
+            Self::Sha3_384 => "SHA3-384",
+            Self::Sha3_512 => "SHA3-512",
         })
     }
 }
@@ -79,11 +103,17 @@ impl SignatureAlgorithm {
     }
 
     pub(crate) fn identifier(self) -> AlgorithmIdentifierOwned {
-        match self {
-            Self::RsaPkcs1v15(DigestAlgorithm::Sha256) => AlgorithmIdentifierOwned {
-                oid: SHA256_WITH_RSA,
-                parameters: Some(Any::from(Null)),
-            },
+        let Self::RsaPkcs1v15(digest) = self;
+        AlgorithmIdentifierOwned {
+            oid: ObjectIdentifier::new_unwrap(match digest {
+                DigestAlgorithm::Sha256 => "1.2.840.113549.1.1.11",
+                DigestAlgorithm::Sha384 => "1.2.840.113549.1.1.12",
+                DigestAlgorithm::Sha512 => "1.2.840.113549.1.1.13",
+                DigestAlgorithm::Sha3_256 => "2.16.840.1.101.3.4.3.14",
+                DigestAlgorithm::Sha3_384 => "2.16.840.1.101.3.4.3.15",
+                DigestAlgorithm::Sha3_512 => "2.16.840.1.101.3.4.3.16",
+            }),
+            parameters: Some(Any::from(Null)),
         }
     }
 }

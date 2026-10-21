@@ -10,7 +10,7 @@ The seam is a directory of signatures with a `manifest.tsv`: one line per signat
 
 ## AutoFirma
 
-`autofirma/AutoFirma.java` verifies with AutoFirma 1.8.2 (`es.gob.afirma:afirma-crypto-*`, on Maven Central). Its `verify` checks the signature's cryptography and the certificate's validity dates, not the chain, so DSS stays the validity oracle. It reads the same manifests: `TOTAL_PASSED` expects `OK`, `TOTAL_FAILED` expects `KO`, and the level column is DSS's. Any other indication is skipped.
+`autofirma/AutoFirma.java` verifies with AutoFirma 1.8.2 (`es.gob.afirma:afirma-crypto-*`, on Maven Central). Its `verify` checks the signature's cryptography and the certificate's validity dates, not the chain, so DSS stays the validity oracle. It reads the same manifests: `TOTAL_PASSED` expects `OK`, `TOTAL_FAILED` expects `KO`, and the level column is DSS's. Any other indication is skipped, and so is a signature a manifest line `#autofirma-skip <file> <reason>` names: AutoFirma cannot judge it (SHA-3).
 
 `autofirma/Generate.java` makes the fixtures in `tests/autofirma`.
 

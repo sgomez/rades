@@ -8,18 +8,78 @@ use rades::cades::{
     self, Certificates, Content, ContentHints, ContentReference, Options, PendingSignature,
 };
 use rades::{DigestAlgorithm, Error, SignatureAlgorithm, SignatureValue, SigningTime};
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha384, Sha512};
+use sha3::{Sha3_256, Sha3_384, Sha3_512};
 use x509_cert::attr::Attribute;
 
 const RSA_SHA256: SignatureAlgorithm = SignatureAlgorithm::RsaPkcs1v15(DigestAlgorithm::Sha256);
 /// 2026-10-21T12:00:00Z, within the test signers' validity.
 const SIGNING_TIME: u64 = 1_792_584_000;
 
+/// Digest, its OID, its RSA PKCS#1 v1.5 signature OID and the golden vector's name.
+const DIGESTS: [(DigestAlgorithm, &str, &str, &str); 6] = [
+    (
+        DigestAlgorithm::Sha256,
+        "2.16.840.1.101.3.4.2.1",
+        "1.2.840.113549.1.1.11",
+        "sha256",
+    ),
+    (
+        DigestAlgorithm::Sha384,
+        "2.16.840.1.101.3.4.2.2",
+        "1.2.840.113549.1.1.12",
+        "sha384",
+    ),
+    (
+        DigestAlgorithm::Sha512,
+        "2.16.840.1.101.3.4.2.3",
+        "1.2.840.113549.1.1.13",
+        "sha512",
+    ),
+    (
+        DigestAlgorithm::Sha3_256,
+        "2.16.840.1.101.3.4.2.8",
+        "2.16.840.1.101.3.4.3.14",
+        "sha3-256",
+    ),
+    (
+        DigestAlgorithm::Sha3_384,
+        "2.16.840.1.101.3.4.2.9",
+        "2.16.840.1.101.3.4.3.15",
+        "sha3-384",
+    ),
+    (
+        DigestAlgorithm::Sha3_512,
+        "2.16.840.1.101.3.4.2.10",
+        "2.16.840.1.101.3.4.3.16",
+        "sha3-512",
+    ),
+];
+
+fn expected_digest(digest: DigestAlgorithm, data: &[u8]) -> Vec<u8> {
+    match digest {
+        DigestAlgorithm::Sha256 => Sha256::digest(data).to_vec(),
+        DigestAlgorithm::Sha384 => Sha384::digest(data).to_vec(),
+        DigestAlgorithm::Sha512 => Sha512::digest(data).to_vec(),
+        DigestAlgorithm::Sha3_256 => Sha3_256::digest(data).to_vec(),
+        DigestAlgorithm::Sha3_384 => Sha3_384::digest(data).to_vec(),
+        DigestAlgorithm::Sha3_512 => Sha3_512::digest(data).to_vec(),
+        _ => unreachable!(),
+    }
+}
+
 fn sign_detached(signer: &str) -> Result<PendingSignature, Error> {
+    sign_detached_with(signer, RSA_SHA256)
+}
+
+fn sign_detached_with(
+    signer: &str,
+    algorithm: SignatureAlgorithm,
+) -> Result<PendingSignature, Error> {
     cades::sign(
         Content::Detached(&common::read("cades/content.txt")),
         &common::certificate(signer),
-        RSA_SHA256,
+        algorithm,
         SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
         &Options::default(),
     )
@@ -66,6 +126,7 @@ fn signed_attributes_are_those_of_cades_bb() {
             "1.2.840.113549.1.9.3",
             "1.2.840.113549.1.9.4",
             "1.2.840.113549.1.9.5",
+            "1.2.840.113549.1.9.52",
         ]
     );
 }
@@ -147,6 +208,83 @@ fn phase_2_rejects_an_rsa_value_shorter_than_the_modulus() {
             actual: 383
         }
     );
+}
+
+fn der_oid(oid: &str) -> Vec<u8> {
+    ObjectIdentifier::new_unwrap(oid).to_der().unwrap()
+}
+
+#[test]
+fn every_digest_has_a_golden_vector() {
+    for (digest, _, _, name) in DIGESTS {
+        let pending =
+            sign_detached_with("signer-rsa", SignatureAlgorithm::RsaPkcs1v15(digest)).unwrap();
+        let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
+        let signature = pending.complete(&[value]).unwrap();
+        common::assert_golden(&format!("cades/bb-detached-rsa-{name}.p7m"), &signature);
+    }
+}
+
+#[test]
+fn every_digest_hashes_the_content_and_the_data_to_sign() {
+    let content = common::read("cades/content.txt");
+    for (digest, _, _, _) in DIGESTS {
+        let pending =
+            sign_detached_with("signer-rsa", SignatureAlgorithm::RsaPkcs1v15(digest)).unwrap();
+        let data = &pending.data_to_sign()[0];
+        assert_eq!(data.digest(), expected_digest(digest, data.bytes()));
+        assert_eq!(
+            signed_attribute(&pending, "1.2.840.113549.1.9.4")
+                .decode_as::<OctetString>()
+                .unwrap()
+                .as_bytes(),
+            expected_digest(digest, &content)
+        );
+    }
+}
+
+#[test]
+fn signing_certificate_v2_hashes_with_the_signatures_digest() {
+    let pem = std::fs::read_to_string(common::path("pki/signer-rsa.crt")).unwrap();
+    let (_, certificate) = der::pem::decode_vec(pem.as_bytes()).unwrap();
+    for (digest, oid, _, _) in DIGESTS {
+        let pending =
+            sign_detached_with("signer-rsa", SignatureAlgorithm::RsaPkcs1v15(digest)).unwrap();
+        let value = signed_attribute(&pending, "1.2.840.113549.1.9.16.2.47")
+            .to_der()
+            .unwrap();
+        let hash = expected_digest(digest, &certificate);
+        let mut expected = vec![0x04, u8::try_from(hash.len()).unwrap()];
+        expected.extend(hash);
+        assert!(value.windows(expected.len()).any(|w| w == expected));
+        let oid = der_oid(oid);
+        // SHA-256 is the DER default, so its identifier is absent.
+        assert_eq!(
+            value.windows(oid.len()).any(|w| w == oid),
+            digest != DigestAlgorithm::Sha256
+        );
+    }
+}
+
+#[test]
+fn cms_algorithm_protection_names_the_digest_and_signature_algorithms() {
+    for (digest, digest_oid, signature_oid, _) in DIGESTS {
+        let pending =
+            sign_detached_with("signer-rsa", SignatureAlgorithm::RsaPkcs1v15(digest)).unwrap();
+        // RFC 6211: SEQUENCE { digestAlgorithm, [1] IMPLICIT signatureAlgorithm }.
+        let digest_algorithm = [&[0x30, 0x0b][..], &der_oid(digest_oid)].concat();
+        let signature_algorithm =
+            [&[0xa1, 0x0d][..], &der_oid(signature_oid), &[0x05, 0x00]].concat();
+        let body = [digest_algorithm, signature_algorithm].concat();
+        let mut expected = vec![0x30, u8::try_from(body.len()).unwrap()];
+        expected.extend(body);
+        assert_eq!(
+            signed_attribute(&pending, "1.2.840.113549.1.9.52")
+                .to_der()
+                .unwrap(),
+            expected
+        );
+    }
 }
 
 const MIME_TYPE: &str = "0.4.0.1733.2.1";
