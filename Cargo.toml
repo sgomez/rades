@@ -1,0 +1,22 @@
+[package]
+name = "rades"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "EUPL-1.2"
+description = "AdES signature formats from the ETSI standards: CAdES, PAdES, XAdES, JAdES and ASiC"
+repository = "https://github.com/sgomez/rades"
+readme = "README.md"
+keywords = ["ades", "eidas", "signature", "etsi", "pades"]
+categories = ["cryptography"]
+# Unpublished until the first format is done.
+publish = false
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
