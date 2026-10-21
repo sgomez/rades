@@ -457,7 +457,7 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] O-04 JAdES co-sign (general JSON) — RFC 7515 §7.2
 - [ ] O-05 PAdES additional signature (new field, incremental update) — EN 319 142-1 §4.1(a)
 - [ ] O-06 ASiC co-sign (more signatures in -S, more signature files in -E) — EN 319 162-1 §4.3–4.4
-- [ ] O-07 CAdES countersignature (recursive; targets tree / leafs / nodes / signers as AutoFirma does) — EN 319 122-1 §5.2.7; AutoFirma `CounterSignTarget`
+- [ ] O-07 CAdES countersignature (recursive; of any signatures the caller picks from the signer tree) — EN 319 122-1 §5.2.7
 - [ ] O-08 XAdES enveloped countersignature (`CounterSignature`) — EN 319 132-1 §5.2.7.2
 - [ ] O-09 XAdES detached countersignature (`ds:Reference/@Type`) — EN 319 132-1 §5.2.7.1
 - [ ] O-10 JAdES `cSig` — TS 119 182-1 §5.3.2
