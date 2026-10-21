@@ -1,5 +1,7 @@
 //! CMS structures of RFC 5652 and the ESS attributes of RFC 5035, as DER.
 
+pub(crate) mod read;
+
 use der::asn1::{Any, ObjectIdentifier, OctetString, SetOfVec};
 use der::{Sequence, ValueOrd};
 use x509_cert::attr::Attribute;

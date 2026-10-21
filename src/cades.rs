@@ -1,8 +1,15 @@
 //! CAdES baseline signatures (EN 319 122-1) over CMS `SignedData` (RFC 5652).
 
+mod decode;
+
+pub use decode::{
+    AlgorithmIdentifier, Attribute, CertId, DecodedSignature, IssuerAndSerial, Signer,
+    SignerIdentifier, SigningCertificate, decode,
+};
+
 use der::asn1::{Any, ObjectIdentifier, OctetString, SetOfVec};
 use der::{Decode, Encode};
-use x509_cert::attr::Attribute;
+use x509_cert::attr::Attribute as DerAttribute;
 use x509_cert::ext::pkix::name::GeneralName;
 
 use crate::certificate::PublicKey;
@@ -129,7 +136,7 @@ impl Options {
 #[derive(Debug)]
 pub struct PendingSignature {
     data_to_sign: Vec<DataToSign>,
-    signed_attrs: SetOfVec<Attribute>,
+    signed_attrs: SetOfVec<DerAttribute>,
     embedded_content: Option<Vec<u8>>,
     certificate: Certificate,
     embedded: Vec<x509_cert::Certificate>,
@@ -202,7 +209,7 @@ pub fn sign(
     })
 }
 
-fn optional_attributes(options: &Options) -> Result<Vec<Attribute>, Error> {
+fn optional_attributes(options: &Options) -> Result<Vec<DerAttribute>, Error> {
     let mut attributes = Vec::new();
     if let Some(mime_type) = &options.mime_type {
         attributes.push(attribute(ID_MIME_TYPE, mime_type)?);
@@ -253,8 +260,8 @@ fn embedded_certificates(
     }
 }
 
-fn attribute(oid: ObjectIdentifier, value: &impl Encode) -> Result<Attribute, Error> {
-    Ok(Attribute {
+fn attribute(oid: ObjectIdentifier, value: &impl Encode) -> Result<DerAttribute, Error> {
+    Ok(DerAttribute {
         oid,
         values: SetOfVec::try_from(vec![Any::from_der(&value.to_der()?)?])?,
     })
