@@ -15,7 +15,7 @@ Rows of the negative cases `CAdES/BBN/1..11` are about validating a foreign sign
 | `CAdES/BB/5` | A countersignature | M4 |
 | `CAdES/BB/6` | `signer-location` and `commitment-type-indication` | M2 |
 | `CAdES/BB/7` | `content-time-stamp` | M3 |
-| `CAdES/BB/8` | An explicit `signature-policy-identifier` | M2 |
+| `CAdES/BB/8` | An explicit `signature-policy-identifier` | `cades_policy::the_age_policy_matches_the_golden_vector`, `cades_policy::the_age_policy_is_encoded_as_in_en_319_122_1`, `cades_policy::a_user_notice_is_encoded_as_in_en_319_122_1`, `cades_policy::a_document_specification_is_encoded_as_in_en_319_122_1`, `cades_policy::an_implied_policy_is_a_null`, `cades_policy::the_age_policy_signs_attached_content`, `cades_policy::the_age_policy_signs_a_precomputed_digest`, `cades_policy::the_age_policy_signs_with_ecdsa`, `cades_policy::the_policy_composes_with_the_optional_attributes_and_the_chain`; DSS and AutoFirma judge the same files (`tests/cades/manifest.tsv`) |
 | `CAdES/BB/9` | SHA-1 and `signing-certificate` v1 | M13 (SHA-1 and creating v1 are out of scope) |
 
 ## TS 119 124-4: assertions on a generator
@@ -49,5 +49,5 @@ Rows of the negative cases `CAdES/BBN/1..11` are about validating a foreign sign
 | `CAdES_BB/SL/1` | `signer-location` (permitted) | M2 |
 | `CAdES_BB/SA/1` | `signer-attributes-v2` (permitted) | M2 |
 | `CAdES_BB/CTS/1` | `content-time-stamp` (permitted) | M3 |
-| `CAdES_BB/SPID/1` | `signature-policy-identifier` (permitted) | M2 |
+| `CAdES_BB/SPID/1` | `signature-policy-identifier` (permitted) | `cades_policy::the_age_policy_is_encoded_as_in_en_319_122_1`, `cades_policy::decode_returns_the_age_policy`, `cades_policy::decode_returns_each_shape_as_it_was_signed`, `cades_policy::an_autofirma_signature_with_exp_policy_firma_age_decodes_to_the_age_policy`, `cades_policy::a_malformed_policy_attribute_is_an_error_not_a_panic` |
 | `CAdES_BB/SPS/1` | `signature-policy-store` (permitted) | M2 |

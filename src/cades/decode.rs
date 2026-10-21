@@ -13,7 +13,8 @@ use crate::cms::read::{self, ID_COUNTERSIGNATURE, Set};
 use crate::cms::{
     ContentInfo, ID_MESSAGE_DIGEST, ID_SIGNED_DATA, ID_SIGNING_TIME, IssuerAndSerialNumber,
 };
-use crate::{Certificate, Error, SigningTime};
+use crate::signature_policy::ID_SIGNATURE_POLICY;
+use crate::{Certificate, Error, SignaturePolicy, SigningTime};
 
 /// `md5` and `md5WithRSAEncryption`.
 const MD5: [ObjectIdentifier; 2] = [
@@ -63,6 +64,7 @@ pub struct Signer {
     message_digest: Option<Vec<u8>>,
     signing_time: Option<SigningTime>,
     signing_certificate: Option<SigningCertificate>,
+    signature_policy: Option<SignaturePolicy>,
 }
 
 impl Signer {
@@ -124,6 +126,12 @@ impl Signer {
     #[must_use]
     pub fn signing_time(&self) -> Option<SigningTime> {
         self.signing_time
+    }
+
+    /// The `signature-policy-identifier` signed attribute.
+    #[must_use]
+    pub fn signature_policy(&self) -> Option<&SignaturePolicy> {
+        self.signature_policy.as_ref()
     }
 
     /// The `signing-certificate-v2` signed attribute, or else the `signing-certificate`.
@@ -286,6 +294,7 @@ fn signer(
         signing_time: single_value::<Time>(&signed_attrs, ID_SIGNING_TIME)?
             .map(SigningTime::from_time),
         signing_certificate: signing_certificate::decode(&signed_attrs)?,
+        signature_policy: single_value(&signed_attrs, ID_SIGNATURE_POLICY)?,
         signed_attributes: attributes(signed_attrs)?,
         unsigned_attributes: attributes(unsigned_attrs)?,
     };

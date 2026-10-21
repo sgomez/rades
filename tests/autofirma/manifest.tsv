@@ -1,3 +1,5 @@
 # Signatures made by AutoFirma with the test PKI: file, indication, level. The detached, co-signed and countersigned ones wait for M4 and M13.
 attached-rsa.p7s	TOTAL_PASSED	CAdES-BASELINE-B
 attached-ecdsa.p7s	TOTAL_PASSED	CAdES-BASELINE-B
+attached-rsa-age.p7s	TOTAL_PASSED	CAdES-BASELINE-B
+attached-ecdsa-age.p7s	TOTAL_PASSED	CAdES-BASELINE-B

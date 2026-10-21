@@ -21,6 +21,15 @@ bb-detached-rsapss-sha3-384.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsapss-sha3-512.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-attributes.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-chain.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-age.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-age-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	content.txt
+bb-attached-rsa-sha256-age.p7m	TOTAL_PASSED	CAdES-BASELINE-B
+bb-attached-rsa-sha256-age-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B
+bb-digest-rsa-sha256-age.p7m	TOTAL_PASSED	CAdES-BASELINE-B	digest:SHA-256:content.txt
+bb-digest-rsa-sha256-age-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	digest:SHA-256:content.txt
+bb-detached-ecdsa-p256-sha256-age.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-ecdsa-p256-sha256-age-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-age-chain.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-nocert.p7m	INDETERMINATE	CAdES-BES	content.txt
 bb-attached-rsa-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B
 bb-attached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B
