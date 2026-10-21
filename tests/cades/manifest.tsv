@@ -1,6 +1,9 @@
 #autofirma-skip bb-detached-rsa-sha3-256.p7m AutoFirma 1.8.2 has no SHA-3 support
 #autofirma-skip bb-detached-rsa-sha3-384.p7m AutoFirma 1.8.2 has no SHA-3 support
 #autofirma-skip bb-detached-rsa-sha3-512.p7m AutoFirma 1.8.2 has no SHA-3 support
+#autofirma-skip bb-detached-rsapss-sha3-256.p7m AutoFirma 1.8.2 has no SHA-3 support
+#autofirma-skip bb-detached-rsapss-sha3-384.p7m AutoFirma 1.8.2 has no SHA-3 support
+#autofirma-skip bb-detached-rsapss-sha3-512.p7m AutoFirma 1.8.2 has no SHA-3 support
 # Signatures the tests produce with rades: file, indication, level, detached content.
 bb-detached-rsa-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	content.txt
@@ -9,6 +12,12 @@ bb-detached-rsa-sha512.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha3-256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha3-384.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha3-512.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha384.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha512.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha3-256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha3-384.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsapss-sha3-512.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-attributes.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-chain.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-nocert.p7m	INDETERMINATE	CAdES-BES	content.txt
