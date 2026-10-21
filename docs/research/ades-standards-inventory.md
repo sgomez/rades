@@ -384,9 +384,9 @@ Flat list of implementable items. IDs are for roadmap traceability.
 
 ### Formats × levels (creation and augmentation)
 
-- [ ] F-01 CAdES-B-B (attached) — EN 319 122-1 §6.3
-- [ ] F-02 CAdES-B-B (detached) — EN 319 122-1 §4.5, §6.3
-- [ ] F-03 CAdES-B-B over a precomputed digest — EN 319 122-1 §5.1.2
+- [x] F-01 CAdES-B-B (attached) — EN 319 122-1 §6.3
+- [x] F-02 CAdES-B-B (detached) — EN 319 122-1 §4.5, §6.3
+- [x] F-03 CAdES-B-B over a precomputed digest — EN 319 122-1 §5.1.2
 - [ ] F-04 CAdES-B-T — EN 319 122-1 §6.3
 - [ ] F-05 CAdES-B-LT — EN 319 122-1 §6.3
 - [ ] F-06 CAdES-B-LTA (`archive-time-stamp-v3` + `ats-hash-index-v3`) — EN 319 122-1 §5.5, §6.3
@@ -436,7 +436,7 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] F-50 FacturaE (XAdES-EPES enveloped, policy v3.1/3.0, roles) — FacturaE policy v3.1 §1
 - [ ] F-51 FacturaE long-term (XAdES-X-L) — FacturaE policy v3.1 §2
 - [ ] F-52 AGE policy EPES (XAdES, CAdES, PAdES) with OID `…2.1.9` and its hash — AGE policy v1.9 §2.6, §3.1
-- [ ] F-53 Bare CMS/PKCS#7 and raw PKCS#1 (`NONE`) as in AutoFirma — AutoFirma `AOSignConstants`
+- [x] F-53 Bare CMS/PKCS#7 and raw PKCS#1 (`NONE`) as in AutoFirma — AutoFirma `AOSignConstants`
 
 ### Legacy forms (validation and augmentation)
 
@@ -451,7 +451,7 @@ Flat list of implementable items. IDs are for roadmap traceability.
 
 ### Operations
 
-- [ ] O-01 Two-phase signing: data-to-sign out, signature value in, for every format — ADR-0001; EN 319 102-1 §4.2.6–4.2.8 (DTBS, DTBSF, DTBSR)
+- [x] O-01 Two-phase signing: data-to-sign out, signature value in, for every format — ADR-0001; EN 319 102-1 §4.2.6–4.2.8 (DTBS, DTBSF, DTBSR)
 - [ ] O-02 CAdES co-sign (parallel SignerInfo) — EN 319 122-1 §4.4
 - [ ] O-03 XAdES co-sign (sibling signatures) — EN 319 162-1 §4.3.3.2
 - [ ] O-04 JAdES co-sign (general JSON) — RFC 7515 §7.2
@@ -478,10 +478,10 @@ Flat list of implementable items. IDs are for roadmap traceability.
 
 ### Shared building blocks
 
-- [ ] B-01 CMS SignedData encode/decode, DER signed attributes — RFC 5652; EN 319 122-1 §4.7
-- [ ] B-02 ESS signing-certificate v1/v2 — RFC 5035; EN 319 122-1 §5.2.2
-- [ ] B-03 CMS algorithm protection — RFC 6211
-- [ ] B-04 content-hints, mime-type, content-reference, content-identifier — EN 319 122-1 §5.2.4, §5.2.11–12
+- [x] B-01 CMS SignedData encode/decode, DER signed attributes — RFC 5652; EN 319 122-1 §4.7
+- [x] B-02 ESS signing-certificate v1/v2 — RFC 5035; EN 319 122-1 §5.2.2
+- [x] B-03 CMS algorithm protection — RFC 6211
+- [x] B-04 content-hints, mime-type, content-reference, content-identifier — EN 319 122-1 §5.2.4, §5.2.11–12
 - [ ] B-05 signer-location / SignatureProductionPlaceV2 / sigPl — 122-1 §5.2.5; 132-1 §5.2.5; 182-1 §5.2.4
 - [ ] B-06 Signer attributes: claimed, certified (attribute certs), signed assertions (incl. SAML) — 122-1 §5.2.6; 132-1 §5.2.6; 182-1 §5.2.5
 - [ ] B-07 Commitment types (6 ETSI OIDs and URIs, plus qualifiers) — TS 119 172-1 Annex B
@@ -513,23 +513,23 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] B-33 ASiCManifest / ASiCArchiveManifest XML — EN 319 162-1 A.4, A.7
 - [ ] B-34 Evidence record syntax (ERS, XMLERS) — RFC 4998; RFC 6283
 - [ ] B-35 MIME / S/MIME wrapping — EN 319 122-1 Annex E (informative)
-- [ ] B-36 Injected time and randomness, reproducible output — rades AGENTS.md (design constraint)
+- [x] B-36 Injected time and randomness, reproducible output — rades AGENTS.md (design constraint)
 
 ### Algorithms
 
-- [ ] A-01 SHA-256/384/512 — TS 119 312 §5.1
-- [ ] A-02 SHA3-256/384/512 — TS 119 312 §5.1
+- [x] A-01 SHA-256/384/512 — TS 119 312 §5.1
+- [x] A-02 SHA3-256/384/512 — TS 119 312 §5.1
 - [ ] A-03 SHA-1, SHA-224 (verification of legacy only) — TS 119 312 Annex D
-- [ ] A-04 RSA PKCS#1 v1.5 (legacy) — TS 119 312 §6.2.2.1
-- [ ] A-05 RSA-PSS (recommended; parameters in CMS, XML, JOSE) — TS 119 312 §6.2.2.1; RFC 8017
-- [ ] A-06 ECDSA P-256/384/521, brainpoolP256/384/512r1, FRP256v1 — TS 119 312 §6.2.2.3 Table 3
+- [x] A-04 RSA PKCS#1 v1.5 (legacy) — TS 119 312 §6.2.2.1
+- [x] A-05 RSA-PSS (recommended; parameters in CMS, XML, JOSE) — TS 119 312 §6.2.2.1; RFC 8017
+- [ ] A-06 ECDSA P-256/384/521, brainpoolP256/384/512r1, FRP256v1 — TS 119 312 §6.2.2.3 Table 3 (P-256/384/521 done in M1; brainpool and FRP256v1 in M13)
 - [ ] A-07 EdDSA Ed25519, Ed448 — TS 119 312 §6.2.2.4; RFC 8032
 - [ ] A-08 DSA (verification) — TS 119 312 §6.2.2.2
 - [ ] A-09 ML-DSA (pure) verification; creation optional — TS 119 312 §6.2.2.5, Annex A
 - [ ] A-10 SLH-DSA (pure in CMS) verification — TS 119 312 §6.2.2.6, Annex A
 - [ ] A-11 LMS / XMSS verification (TSTs) — TS 119 312 §6.2.2.7, A.9
 - [ ] A-12 Cryptographic constraints by date (RSA < 3000 bits after 2026-12-31; Annex D end dates) — TS 119 312 §8.4, Annex D
-- [ ] A-13 Reject MD5 as a digest — EN 319 122-1 §6.2.1 (and the same clause in the other ENs)
+- [x] A-13 Reject MD5 as a digest — EN 319 122-1 §6.2.1 (and the same clause in the other ENs)
 
 ### Validation
 
@@ -571,9 +571,9 @@ Flat list of implementable items. IDs are for roadmap traceability.
 
 ### Conformance and oracles
 
-- [ ] C-01 CAdES baseline interop cases `CAdES/BB…Aug` — TS 119 124-2
+- [ ] C-01 CAdES baseline interop cases `CAdES/BB…Aug` — TS 119 124-2 (B-B in M1; the rest per level, `docs/cades-bb-matrix.md`)
 - [ ] C-02 CAdES extended interop cases — TS 119 124-3
-- [ ] C-03 CAdES baseline conformance assertions — TS 119 124-4
+- [ ] C-03 CAdES baseline conformance assertions — TS 119 124-4 (B-B in M1; the rest per level, `docs/cades-bb-matrix.md`)
 - [ ] C-04 CAdES extended conformance assertions — TS 119 124-5
 - [ ] C-05 XAdES interop (baseline, extended) — TS 119 134-2, -3
 - [ ] C-06 XAdES conformance (baseline, extended) — TS 119 134-4, -5 (V2.1.1)
@@ -582,9 +582,9 @@ Flat list of implementable items. IDs are for roadmap traceability.
 - [ ] C-09 ASiC interop (baseline V2.1.1, additional) — TS 119 164-2, -3
 - [ ] C-10 ASiC conformance — TS 119 164-4, -5
 - [ ] C-11 JAdES: no ETSI test specification; derive from TS 119 182-1 Table 1 — etsi.org/deliver listing
-- [ ] C-12 ETSI Signatures Conformance Checker run per format — signatures-conformance-checker.etsi.org
-- [ ] C-13 DSS 6.5.x validation in CI (REST `validateSignature`, simple and ETSI reports) — DSS docs §15.1; `CXFConfig`
-- [ ] C-14 AutoFirma round-trip (AutoFirma signs, rades validates, and the reverse) — ADR-0001
+- [x] C-12 ETSI Signatures Conformance Checker run per format — signatures-conformance-checker.etsi.org
+- [x] C-13 DSS 6.5.x validation in CI (REST `validateSignature`, simple and ETSI reports) — DSS docs §15.1; `CXFConfig`
+- [ ] C-14 AutoFirma round-trip (AutoFirma signs, rades validates, and the reverse) — ADR-0001 (AutoFirma verifies rades since M0; rades validates AutoFirma from M13)
 - [ ] C-15 ETSI Plugtests participation (CB-AdES 2026; future AdES/LTA events) — ETSI CTI
 
 ## References
