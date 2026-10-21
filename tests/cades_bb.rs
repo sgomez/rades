@@ -178,7 +178,7 @@ fn described() -> Options {
         })
 }
 
-fn sign_with(options: &Options) -> PendingSignature {
+fn sign_with_options(options: &Options) -> PendingSignature {
     cades::sign(
         Content::Detached(&common::read("cades/content.txt")),
         &common::certificate("signer-rsa"),
@@ -207,7 +207,7 @@ fn complete(pending: PendingSignature) -> Vec<u8> {
 
 #[test]
 fn optional_attributes_appear_only_when_set() {
-    let oids = attribute_oids(&sign_with(&Options::default()));
+    let oids = attribute_oids(&sign_with_options(&Options::default()));
     for oid in [
         MIME_TYPE,
         CONTENT_HINTS,
@@ -216,14 +216,16 @@ fn optional_attributes_appear_only_when_set() {
     ] {
         assert!(!oids.iter().any(|o| o == oid), "{oid}");
     }
-    let oids = attribute_oids(&sign_with(&Options::default().mime_type("text/plain")));
+    let oids = attribute_oids(&sign_with_options(
+        &Options::default().mime_type("text/plain"),
+    ));
     assert!(oids.iter().any(|o| o == MIME_TYPE));
     assert!(!oids.iter().any(|o| o == CONTENT_HINTS));
 }
 
 #[test]
 fn optional_attributes_are_encoded_as_in_en_319_122_1() {
-    let pending = sign_with(&described());
+    let pending = sign_with_options(&described());
     assert_eq!(
         signed_attribute(&pending, MIME_TYPE).to_der().unwrap(),
         b"\x0c\x0atext/plain"
@@ -253,7 +255,7 @@ fn content_hints_without_description_is_the_content_type_alone() {
         ObjectIdentifier::new_unwrap(ID_DATA),
     ));
     assert_eq!(
-        signed_attribute(&sign_with(&options), CONTENT_HINTS)
+        signed_attribute(&sign_with_options(&options), CONTENT_HINTS)
             .to_der()
             .unwrap(),
         b"\x30\x0b\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07\x01"
@@ -263,7 +265,7 @@ fn content_hints_without_description_is_the_content_type_alone() {
 #[test]
 fn the_signer_certificate_is_embedded_by_default() {
     assert_eq!(
-        embedded_certificates(&complete(sign_with(&Options::default()))),
+        embedded_certificates(&complete(sign_with_options(&Options::default()))),
         1
     );
 }
@@ -274,20 +276,26 @@ fn the_chain_is_embedded_on_request() {
         common::certificate("intermediate"),
         common::certificate("root"),
     ]));
-    assert_eq!(embedded_certificates(&complete(sign_with(&options))), 3);
+    assert_eq!(
+        embedded_certificates(&complete(sign_with_options(&options))),
+        3
+    );
 }
 
 #[test]
 fn no_certificate_is_embedded_on_request() {
     let options = Options::default().certificates(Certificates::None);
-    assert_eq!(embedded_certificates(&complete(sign_with(&options))), 0);
+    assert_eq!(
+        embedded_certificates(&complete(sign_with_options(&options))),
+        0
+    );
 }
 
 #[test]
 fn detached_with_attributes_matches_the_golden_vector() {
     common::assert_golden(
         "cades/bb-detached-rsa-sha256-attributes.p7m",
-        &complete(sign_with(&described())),
+        &complete(sign_with_options(&described())),
     );
 }
 
@@ -298,7 +306,7 @@ fn detached_with_chain_matches_the_golden_vector() {
     )]));
     common::assert_golden(
         "cades/bb-detached-rsa-sha256-chain.p7m",
-        &complete(sign_with(&options)),
+        &complete(sign_with_options(&options)),
     );
 }
 
@@ -307,6 +315,55 @@ fn detached_without_certificates_matches_the_golden_vector() {
     let options = Options::default().certificates(Certificates::None);
     common::assert_golden(
         "cades/bb-detached-rsa-sha256-nocert.p7m",
-        &complete(sign_with(&options)),
+        &complete(sign_with_options(&options)),
+    );
+}
+
+fn sign_with(content: Content<'_>) -> Result<Vec<u8>, Error> {
+    let pending = cades::sign(
+        content,
+        &common::certificate("signer-rsa"),
+        RSA_SHA256,
+        SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
+        &Options::default(),
+    )?;
+    let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
+    pending.complete(&[value])
+}
+
+#[test]
+fn attached_rsa_sha256_matches_the_golden_vector() {
+    let content = common::read("cades/content.txt");
+    let signature = sign_with(Content::Attached(&content)).unwrap();
+    common::assert_golden("cades/bb-attached-rsa-sha256.p7m", &signature);
+    assert!(
+        signature.windows(content.len()).any(|w| w == content),
+        "the content is embedded"
+    );
+}
+
+#[test]
+fn a_precomputed_digest_signs_like_the_detached_content() {
+    let content = common::read("cades/content.txt");
+    let digest = Sha256::digest(&content).to_vec();
+    let signature = sign_with(Content::Digest {
+        algorithm: DigestAlgorithm::Sha256,
+        digest: &digest,
+    })
+    .unwrap();
+    assert_eq!(signature, sign_with(Content::Detached(&content)).unwrap());
+    common::assert_golden("cades/bb-digest-rsa-sha256.p7m", &signature);
+}
+
+#[test]
+fn a_digest_of_the_wrong_length_is_rejected() {
+    let error = sign_with(Content::Digest {
+        algorithm: DigestAlgorithm::Sha256,
+        digest: &[0; 20],
+    })
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "SHA-256 digest is 20 bytes long, expected 32"
     );
 }

@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::SignatureAlgorithm;
+use crate::{DigestAlgorithm, SignatureAlgorithm};
 
 /// Why rades could not produce a signature.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,6 +33,15 @@ pub enum Error {
         /// Signature value length in bytes.
         actual: usize,
     },
+    /// A precomputed digest is not as long as its algorithm's output.
+    DigestLength {
+        /// The algorithm the caller named.
+        algorithm: DigestAlgorithm,
+        /// Output length in bytes.
+        expected: usize,
+        /// Digest length in bytes.
+        actual: usize,
+    },
     /// A DER structure could not be encoded.
     Encoding(String),
 }
@@ -54,6 +63,14 @@ impl fmt::Display for Error {
             Self::SignatureValueLength { expected, actual } => write!(
                 f,
                 "signature value is {actual} bytes long, the RSA modulus {expected}"
+            ),
+            Self::DigestLength {
+                algorithm,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "{algorithm} digest is {actual} bytes long, expected {expected}"
             ),
             Self::Encoding(reason) => write!(f, "der encoding failed: {reason}"),
         }

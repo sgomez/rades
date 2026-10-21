@@ -42,7 +42,7 @@ public class AutoFirma {
                 }
                 byte[] bytes = Files.readAllBytes(signature);
                 SignValidity validity = entry.length == 4
-                        ? ValidateBinarySignature.validate(bytes, Files.readAllBytes(dir.resolve(entry[3])))
+                        ? ValidateBinarySignature.validate(bytes, Files.readAllBytes(dir.resolve(entry[3].replaceFirst("^digest:[^:]*:", ""))))
                         : SignValiderFactory.getSignValider(bytes).validate(bytes);
                 checked++;
                 if (validity.getValidity() == expected) {
