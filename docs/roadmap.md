@@ -36,7 +36,7 @@ What the Spanish sites ask for: the AGE policy, commitment types, roles and plac
 
 B-05, B-06, B-07, B-08, B-09, F-07, F-52
 
-F-52 lands here for CAdES and is rechecked for PAdES in M8 and XAdES in M11. rFirma can move CAdES to rades here.
+B-08 and F-52 (CAdES part) are done: rFirma can move CAdES `sign` under the AGE policy, without a time stamp, to rades. The rest of CAdES waits for M3 and M4. F-52 is rechecked for PAdES in M8 and XAdES in M11.
 
 ### M3. Time stamps and B-T
 
