@@ -15,7 +15,8 @@ pub struct Certificate(x509_cert::Certificate);
 /// The certificate's public key, as far as signing needs it.
 pub(crate) enum PublicKey {
     Rsa { modulus_len: usize },
-    Ec,
+    Ec { curve: Curve },
+    UnsupportedCurve(String),
     Other(ObjectIdentifier),
 }
 
@@ -23,8 +24,36 @@ impl PublicKey {
     pub(crate) fn name(&self) -> String {
         match self {
             Self::Rsa { .. } => "RSA".to_owned(),
-            Self::Ec => "EC".to_owned(),
+            Self::Ec { .. } | Self::UnsupportedCurve(_) => "EC".to_owned(),
             Self::Other(oid) => oid.to_string(),
+        }
+    }
+}
+
+/// The elliptic curves ECDSA signs on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Curve {
+    P256,
+    P384,
+    P521,
+}
+
+impl Curve {
+    fn from_oid(oid: ObjectIdentifier) -> Option<Self> {
+        match oid.to_string().as_str() {
+            "1.2.840.10045.3.1.7" => Some(Self::P256),
+            "1.3.132.0.34" => Some(Self::P384),
+            "1.3.132.0.35" => Some(Self::P521),
+            _ => None,
+        }
+    }
+
+    /// Length in bytes of the curve's order.
+    pub(crate) fn order_len(self) -> usize {
+        match self {
+            Self::P256 => 32,
+            Self::P384 => 48,
+            Self::P521 => 66,
         }
     }
 }
@@ -64,7 +93,18 @@ impl Certificate {
         let spki = self.0.tbs_certificate().subject_public_key_info();
         let oid = spki.algorithm.oid;
         if oid == EC_PUBLIC_KEY {
-            return Ok(PublicKey::Ec);
+            let curve = spki
+                .algorithm
+                .parameters
+                .as_ref()
+                .and_then(|p| p.decode_as::<ObjectIdentifier>().ok())
+                .ok_or_else(|| {
+                    Error::InvalidCertificate("ec key without named curve".to_owned())
+                })?;
+            return Ok(Curve::from_oid(curve).map_or_else(
+                || PublicKey::UnsupportedCurve(curve.to_string()),
+                |curve| PublicKey::Ec { curve },
+            ));
         }
         if oid != RSA_ENCRYPTION {
             return Ok(PublicKey::Other(oid));

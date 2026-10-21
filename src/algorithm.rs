@@ -96,6 +96,8 @@ pub enum SignatureAlgorithm {
     RsaPkcs1v15(DigestAlgorithm),
     /// RSASSA-PSS (RFC 8017), MGF1 with the same digest and a salt as long as the digest.
     RsaPss(DigestAlgorithm),
+    /// ECDSA (FIPS 186-5) on P-256, P-384 or P-521, the signature as a DER `ECDSA-Sig-Value`.
+    Ecdsa(DigestAlgorithm),
 }
 
 impl SignatureAlgorithm {
@@ -103,7 +105,7 @@ impl SignatureAlgorithm {
     #[must_use]
     pub fn digest_algorithm(self) -> DigestAlgorithm {
         match self {
-            Self::RsaPkcs1v15(digest) | Self::RsaPss(digest) => digest,
+            Self::RsaPkcs1v15(digest) | Self::RsaPss(digest) | Self::Ecdsa(digest) => digest,
         }
     }
 
@@ -132,6 +134,17 @@ impl SignatureAlgorithm {
                         .map_err(|e| Error::Encoding(e.to_string()))?,
                 })?),
             }),
+            Self::Ecdsa(digest) => Ok(AlgorithmIdentifierOwned {
+                oid: ObjectIdentifier::new_unwrap(match digest {
+                    DigestAlgorithm::Sha256 => "1.2.840.10045.4.3.2",
+                    DigestAlgorithm::Sha384 => "1.2.840.10045.4.3.3",
+                    DigestAlgorithm::Sha512 => "1.2.840.10045.4.3.4",
+                    DigestAlgorithm::Sha3_256 => "2.16.840.1.101.3.4.3.10",
+                    DigestAlgorithm::Sha3_384 => "2.16.840.1.101.3.4.3.11",
+                    DigestAlgorithm::Sha3_512 => "2.16.840.1.101.3.4.3.12",
+                }),
+                parameters: None,
+            }),
         }
     }
 }
@@ -156,6 +169,7 @@ impl fmt::Display for SignatureAlgorithm {
         match self {
             Self::RsaPkcs1v15(digest) => write!(f, "RSA PKCS#1 v1.5 with {digest}"),
             Self::RsaPss(digest) => write!(f, "RSA-PSS with {digest}"),
+            Self::Ecdsa(digest) => write!(f, "ECDSA with {digest}"),
         }
     }
 }

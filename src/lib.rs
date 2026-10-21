@@ -4,6 +4,7 @@ mod algorithm;
 pub mod cades;
 mod certificate;
 mod cms;
+mod ecdsa;
 mod error;
 pub mod pkcs1;
 mod signing;
