@@ -189,7 +189,10 @@ fn build(
     options: Option<&Options>,
 ) -> Result<PendingSignature, Error> {
     let modulus_len = match (algorithm, certificate.public_key()?) {
-        (SignatureAlgorithm::RsaPkcs1v15(_), PublicKey::Rsa { modulus_len }) => modulus_len,
+        (
+            SignatureAlgorithm::RsaPkcs1v15(_) | SignatureAlgorithm::RsaPss(_),
+            PublicKey::Rsa { modulus_len },
+        ) => modulus_len,
         (_, key) => {
             return Err(Error::AlgorithmMismatch {
                 algorithm,
@@ -229,7 +232,7 @@ fn build(
             ID_CMS_ALGORITHM_PROTECTION,
             &CmsAlgorithmProtection {
                 digest_algorithm: digest_algorithm.identifier(),
-                signature_algorithm: algorithm.identifier(),
+                signature_algorithm: algorithm.identifier()?,
             },
         )?);
         attributes.extend(optional_attributes(options)?);
@@ -357,7 +360,7 @@ impl PendingSignature {
             },
             digest_algorithm: digest_algorithm.identifier(),
             signed_attrs: self.signed_attrs,
-            signature_algorithm: algorithm.identifier(),
+            signature_algorithm: algorithm.identifier()?,
             signature: OctetString::new(value.as_bytes())?,
         };
         let signed_data = SignedData {
