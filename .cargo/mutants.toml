@@ -1,0 +1,2 @@
+# The decode-only CMS structures derive `Sequence`, which needs `Set` to encode, but rades never encodes them.
+exclude_re = ["<impl EncodeValue for Set<T>>::"]
