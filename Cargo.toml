@@ -30,6 +30,7 @@ ecdsa = { version = "0.16", features = ["der", "hazmat", "signing"] }
 p256 = { version = "0.13", features = ["ecdsa"] }
 p384 = { version = "0.13", features = ["ecdsa"] }
 p521 = { version = "0.13", features = ["ecdsa", "pem"] }
+proptest = "1.11.0"
 rand_chacha = "0.3"
 rsa = "0.9"
 sha2_10 = { version = "0.10", package = "sha2" }

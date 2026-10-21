@@ -24,6 +24,34 @@ pub fn certificate(signer: &str) -> Certificate {
     Certificate::from_pem(&pem).unwrap()
 }
 
+pub fn certificate_der(signer: &str) -> Vec<u8> {
+    let pem = std::fs::read_to_string(path(&format!("pki/{signer}.crt"))).unwrap();
+    der::pem::decode_vec(pem.as_bytes()).unwrap().1
+}
+
+/// The DER `SubjectPublicKeyInfo` of the signer's certificate.
+pub fn certificate_spki(signer: &str) -> Vec<u8> {
+    use der::{Decode, Encode};
+    x509_cert::Certificate::from_der(&certificate_der(signer))
+        .unwrap()
+        .tbs_certificate()
+        .subject_public_key_info()
+        .to_der()
+        .unwrap()
+}
+
+/// The SEC1 point of the signer's EC public key.
+pub fn certificate_point(signer: &str) -> Vec<u8> {
+    use der::Decode;
+    x509_cert::Certificate::from_der(&certificate_der(signer))
+        .unwrap()
+        .tbs_certificate()
+        .subject_public_key_info()
+        .subject_public_key
+        .raw_bytes()
+        .to_vec()
+}
+
 pub fn sign_rsa_pkcs1(signer: &str, data: &DataToSign) -> SignatureValue {
     let pem = std::fs::read_to_string(path(&format!("pki/{signer}.key"))).unwrap();
     let key = RsaPrivateKey::from_pkcs8_pem(&pem).unwrap();
