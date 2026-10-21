@@ -1,3 +1,6 @@
 # Signatures the tests produce with rades: file, indication, level, detached content.
 bb-detached-rsa-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
 bb-detached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-attributes.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-chain.p7m	TOTAL_PASSED	CAdES-BASELINE-B	content.txt
+bb-detached-rsa-sha256-nocert.p7m	INDETERMINATE	CAdES-BES	content.txt

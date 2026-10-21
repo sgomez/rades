@@ -4,7 +4,9 @@ mod common;
 
 use der::asn1::{ObjectIdentifier, OctetString, SetOfVec, UtcTime};
 use der::{Any, Decode, Encode};
-use rades::cades::{self, Content, Options, PendingSignature};
+use rades::cades::{
+    self, Certificates, Content, ContentHints, ContentReference, Options, PendingSignature,
+};
 use rades::{DigestAlgorithm, Error, SignatureAlgorithm, SignatureValue, SigningTime};
 use sha2::{Digest, Sha256};
 use x509_cert::attr::Attribute;
@@ -144,5 +146,167 @@ fn phase_2_rejects_an_rsa_value_shorter_than_the_modulus() {
             expected: 384,
             actual: 383
         }
+    );
+}
+
+const MIME_TYPE: &str = "0.4.0.1733.2.1";
+const CONTENT_HINTS: &str = "1.2.840.113549.1.9.16.2.4";
+const CONTENT_IDENTIFIER: &str = "1.2.840.113549.1.9.16.2.7";
+const CONTENT_REFERENCE: &str = "1.2.840.113549.1.9.16.2.10";
+const ID_DATA: &str = "1.2.840.113549.1.7.1";
+
+fn attribute_oids(pending: &PendingSignature) -> Vec<String> {
+    SetOfVec::<Attribute>::from_der(pending.data_to_sign()[0].bytes())
+        .unwrap()
+        .iter()
+        .map(|a| a.oid.to_string())
+        .collect()
+}
+
+fn described() -> Options {
+    Options::default()
+        .mime_type("text/plain")
+        .content_hints(ContentHints::new(
+            Some("test content".to_owned()),
+            ObjectIdentifier::new_unwrap(ID_DATA),
+        ))
+        .content_identifier(b"rades-content-1".to_vec())
+        .content_reference(ContentReference {
+            content_type: ObjectIdentifier::new_unwrap(ID_DATA),
+            signed_content_identifier: b"rades-content-0".to_vec(),
+            originator_signature_value: vec![0xAB; 4],
+        })
+}
+
+fn sign_with(options: &Options) -> PendingSignature {
+    cades::sign(
+        Content::Detached(&common::read("cades/content.txt")),
+        &common::certificate("signer-rsa"),
+        RSA_SHA256,
+        SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
+        options,
+    )
+    .unwrap()
+}
+
+fn embedded_certificates(signature: &[u8]) -> usize {
+    ["signer-rsa", "intermediate", "root"]
+        .iter()
+        .filter(|name| {
+            let pem = std::fs::read_to_string(common::path(&format!("pki/{name}.crt"))).unwrap();
+            let der = der::pem::decode_vec(pem.as_bytes()).unwrap().1;
+            signature.windows(der.len()).any(|w| w == der)
+        })
+        .count()
+}
+
+fn complete(pending: PendingSignature) -> Vec<u8> {
+    let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
+    pending.complete(&[value]).unwrap()
+}
+
+#[test]
+fn optional_attributes_appear_only_when_set() {
+    let oids = attribute_oids(&sign_with(&Options::default()));
+    for oid in [
+        MIME_TYPE,
+        CONTENT_HINTS,
+        CONTENT_IDENTIFIER,
+        CONTENT_REFERENCE,
+    ] {
+        assert!(!oids.iter().any(|o| o == oid), "{oid}");
+    }
+    let oids = attribute_oids(&sign_with(&Options::default().mime_type("text/plain")));
+    assert!(oids.iter().any(|o| o == MIME_TYPE));
+    assert!(!oids.iter().any(|o| o == CONTENT_HINTS));
+}
+
+#[test]
+fn optional_attributes_are_encoded_as_in_en_319_122_1() {
+    let pending = sign_with(&described());
+    assert_eq!(
+        signed_attribute(&pending, MIME_TYPE).to_der().unwrap(),
+        b"\x0c\x0atext/plain"
+    );
+    assert_eq!(
+        signed_attribute(&pending, CONTENT_HINTS).to_der().unwrap(),
+        b"\x30\x19\x0c\x0ctest content\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07\x01"
+    );
+    assert_eq!(
+        signed_attribute(&pending, CONTENT_IDENTIFIER)
+            .to_der()
+            .unwrap(),
+        b"\x04\x0frades-content-1"
+    );
+    assert_eq!(
+        signed_attribute(&pending, CONTENT_REFERENCE)
+            .to_der()
+            .unwrap(),
+        b"\x30\x22\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07\x01\x04\x0frades-content-0\x04\x04\xab\xab\xab\xab"
+    );
+}
+
+#[test]
+fn content_hints_without_description_is_the_content_type_alone() {
+    let options = Options::default().content_hints(ContentHints::new(
+        None,
+        ObjectIdentifier::new_unwrap(ID_DATA),
+    ));
+    assert_eq!(
+        signed_attribute(&sign_with(&options), CONTENT_HINTS)
+            .to_der()
+            .unwrap(),
+        b"\x30\x0b\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x07\x01"
+    );
+}
+
+#[test]
+fn the_signer_certificate_is_embedded_by_default() {
+    assert_eq!(
+        embedded_certificates(&complete(sign_with(&Options::default()))),
+        1
+    );
+}
+
+#[test]
+fn the_chain_is_embedded_on_request() {
+    let options = Options::default().certificates(Certificates::Chain(vec![
+        common::certificate("intermediate"),
+        common::certificate("root"),
+    ]));
+    assert_eq!(embedded_certificates(&complete(sign_with(&options))), 3);
+}
+
+#[test]
+fn no_certificate_is_embedded_on_request() {
+    let options = Options::default().certificates(Certificates::None);
+    assert_eq!(embedded_certificates(&complete(sign_with(&options))), 0);
+}
+
+#[test]
+fn detached_with_attributes_matches_the_golden_vector() {
+    common::assert_golden(
+        "cades/bb-detached-rsa-sha256-attributes.p7m",
+        &complete(sign_with(&described())),
+    );
+}
+
+#[test]
+fn detached_with_chain_matches_the_golden_vector() {
+    let options = Options::default().certificates(Certificates::Chain(vec![common::certificate(
+        "intermediate",
+    )]));
+    common::assert_golden(
+        "cades/bb-detached-rsa-sha256-chain.p7m",
+        &complete(sign_with(&options)),
+    );
+}
+
+#[test]
+fn detached_without_certificates_matches_the_golden_vector() {
+    let options = Options::default().certificates(Certificates::None);
+    common::assert_golden(
+        "cades/bb-detached-rsa-sha256-nocert.p7m",
+        &complete(sign_with(&options)),
     );
 }
