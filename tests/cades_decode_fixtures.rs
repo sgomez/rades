@@ -65,6 +65,9 @@ fn assert_signer(signer: &Signer, name: &str, content: &[u8], signing_time: u64)
         signer.signing_time(),
         Some(SigningTime::from_unix_seconds(signing_time).unwrap())
     );
+}
+
+fn assert_signing_certificate_v2(signer: &Signer, name: &str) {
     let Some(SigningCertificate::V2(certs)) = signer.signing_certificate() else {
         panic!("signing-certificate-v2 expected")
     };
@@ -90,7 +93,13 @@ fn every_golden_vector_decodes_to_its_inputs() {
         }
         let attached = columns.get(3).is_none();
         assert_eq!(decoded.content(), attached.then_some(content.as_slice()));
-        assert_signer(signer, &signer_named(signer), &content, GOLDEN_SIGNING_TIME);
+        let name = signer_named(signer);
+        assert_signer(signer, &name, &content, GOLDEN_SIGNING_TIME);
+        if columns[2].starts_with("CAdES") {
+            assert_signing_certificate_v2(signer, &name);
+        } else {
+            assert_eq!(signer.signing_certificate(), None, "{}", columns[0]);
+        }
         assert_eq!(signer.unsigned_attributes(), []);
     }
 }
@@ -106,6 +115,7 @@ fn assert_autofirma_signer(signer: &Signer, name: &str, signature_algorithm: &st
         &common::read("pki/content.txt"),
         AUTOFIRMA_SIGNING_TIME,
     );
+    assert_signing_certificate_v2(signer, name);
     assert_eq!(
         signer.certificate(),
         Some(&common::certificate(name)),
