@@ -4,7 +4,7 @@ set -euo pipefail
 
 MAX_TOKENS=5000
 
-# Not written by agents: lockfiles, the license, vendored skills and research records.
+# Not written by agents: lockfiles, the license, vendored skills, research records and DSS's policy.
 EXCLUDE_PATTERNS=(
   "Cargo.lock"
   "skills-lock.json"
@@ -12,6 +12,7 @@ EXCLUDE_PATTERNS=(
   ".agents/skills/*"
   ".claude/skills/*"
   "docs/research/*"
+  "oracles/dss/policy.xml"
 )
 
 file_list() {
