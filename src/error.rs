@@ -70,6 +70,11 @@ pub enum Error {
         /// Hash length in bytes.
         actual: usize,
     },
+    /// A policy notice text is not between 1 and 200 characters long.
+    PolicyNoticeTextLength {
+        /// Text length in characters.
+        actual: usize,
+    },
     /// The bytes to decode are not a CMS signature.
     MalformedSignature(String),
     /// A decoded signature uses a broken digest algorithm.
@@ -128,6 +133,10 @@ impl fmt::Display for Error {
             } => write!(
                 f,
                 "{algorithm} policy hash is {actual} bytes long, expected {expected}"
+            ),
+            Self::PolicyNoticeTextLength { actual } => write!(
+                f,
+                "policy notice text is {actual} characters long, expected 1 to 200"
             ),
             Self::MalformedSignature(reason) => write!(f, "malformed signature: {reason}"),
             Self::RejectedDigestAlgorithm(name) => write!(f, "rejected digest algorithm {name}"),
