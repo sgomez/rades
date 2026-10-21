@@ -1,0 +1,3 @@
+# Signatures DSS validates with `just oracles`: file, indication, level.
+cades-bb.der	TOTAL_PASSED	CAdES-BASELINE-B
+cades-bb-tampered.der	TOTAL_FAILED	CAdES-BASELINE-B

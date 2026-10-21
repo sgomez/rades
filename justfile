@@ -33,3 +33,7 @@ mutants *args:
 
 test-one filter:
     cargo test --quiet {{ filter }}
+
+# Every oracle over the manifest of each signature directory; needs JBang and Java 17+.
+oracles:
+    jbang oracles/dss/Dss.java oracles/dss/policy.xml tests/pki/root.crt tests/pki
