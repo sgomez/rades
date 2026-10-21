@@ -1,5 +1,8 @@
 [advisories]
 yanked = "deny"
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "rsa is a dev-dependency that signs with public test keys; its private-key timing is irrelevant" },
+]
 
 [licenses]
 allow = ["Apache-2.0", "BSD-3-Clause", "EUPL-1.2", "MIT", "Unicode-3.0", "Zlib"]
