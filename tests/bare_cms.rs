@@ -1,4 +1,4 @@
-//! AutoFirma's bare CMS mode: a `SignedData` without the ETSI attributes.
+//! `AutoFirma`'s bare CMS mode: a `SignedData` without the ETSI attributes.
 
 mod common;
 

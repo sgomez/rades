@@ -1,4 +1,4 @@
-//! AutoFirma's raw PKCS#1 mode (`NONE`): the signature value over the content, as is.
+//! `AutoFirma`'s raw PKCS#1 mode (`NONE`): the signature value over the content, as is.
 
 use crate::certificate::PublicKey;
 use crate::{Certificate, Error, SignatureValue};
@@ -35,7 +35,7 @@ impl PendingSignature {
     ///
     /// # Errors
     /// [`Error::SignatureValueLength`] if the value is not as long as the modulus.
-    pub fn complete(self, value: SignatureValue) -> Result<Vec<u8>, Error> {
+    pub fn complete(self, value: &SignatureValue) -> Result<Vec<u8>, Error> {
         let bytes = value.as_bytes();
         if bytes.len() != self.modulus_len {
             return Err(Error::SignatureValueLength {

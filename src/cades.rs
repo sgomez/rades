@@ -157,7 +157,7 @@ pub fn sign(
     )
 }
 
-/// Phase 1 of AutoFirma's bare CMS: a `SignedData` signing only `content-type`,
+/// Phase 1 of `AutoFirma`'s bare CMS: a `SignedData` signing only `content-type`,
 /// `message-digest` and `signing-time`.
 ///
 /// # Errors
