@@ -26,7 +26,7 @@ test:
 deny:
     cargo deny check
 
-# Mutates the code and reports the mutants the tests miss; slow, run by hand.
+# Mutates the code and reports the mutants the tests miss (`.cargo/mutants.toml`); slow.
 [positional-arguments]
 mutants *args:
     cargo mutants "$@"
