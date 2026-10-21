@@ -16,3 +16,7 @@ bb-attached-rsa-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B
 bb-attached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B
 bb-digest-rsa-sha256.p7m	TOTAL_PASSED	CAdES-BASELINE-B	digest:SHA-256:content.txt
 bb-digest-rsa-sha256-tampered.p7m	TOTAL_FAILED	CAdES-BASELINE-B	digest:SHA-256:content.txt
+cms-detached-rsa-sha256.p7m	TOTAL_PASSED	CMS-NOT-ETSI	content.txt
+cms-detached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CMS-NOT-ETSI	content.txt
+cms-attached-rsa-sha256.p7m	TOTAL_PASSED	CMS-NOT-ETSI
+cms-attached-rsa-sha256-tampered.p7m	TOTAL_FAILED	CMS-NOT-ETSI

@@ -1,4 +1,5 @@
 //! Test PKI, test keys and golden vectors shared by the integration tests.
+#![allow(dead_code)]
 
 use std::path::PathBuf;
 
