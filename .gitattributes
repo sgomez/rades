@@ -1,0 +1,5 @@
+# Test inputs are digested and signed byte for byte: no line-ending conversion.
+tests/**/content.txt -text
+*.p7m binary
+*.p7s binary
+*.p12 binary

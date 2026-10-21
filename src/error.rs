@@ -54,6 +54,13 @@ pub enum Error {
         /// Digest length in bytes.
         actual: usize,
     },
+    /// A precomputed digest's algorithm is not the signature algorithm's.
+    DigestAlgorithmMismatch {
+        /// The algorithm that produced the digest.
+        given: DigestAlgorithm,
+        /// The signature algorithm's digest algorithm.
+        expected: DigestAlgorithm,
+    },
     /// The bytes to decode are not a CMS signature.
     MalformedSignature(String),
     /// A decoded signature uses a broken digest algorithm.
@@ -100,6 +107,10 @@ impl fmt::Display for Error {
             } => write!(
                 f,
                 "{algorithm} digest is {actual} bytes long, expected {expected}"
+            ),
+            Self::DigestAlgorithmMismatch { given, expected } => write!(
+                f,
+                "{given} digest given, the signature algorithm digests with {expected}"
             ),
             Self::MalformedSignature(reason) => write!(f, "malformed signature: {reason}"),
             Self::RejectedDigestAlgorithm(name) => write!(f, "rejected digest algorithm {name}"),

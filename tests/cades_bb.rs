@@ -505,3 +505,16 @@ fn a_digest_of_the_wrong_length_is_rejected() {
         "SHA-256 digest is 20 bytes long, expected 32"
     );
 }
+
+#[test]
+fn a_digest_of_another_algorithm_is_rejected() {
+    let error = sign_with(Content::Digest {
+        algorithm: DigestAlgorithm::Sha512,
+        digest: &[0; 64],
+    })
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "SHA-512 digest given, the signature algorithm digests with SHA-256"
+    );
+}

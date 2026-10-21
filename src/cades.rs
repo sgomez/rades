@@ -229,6 +229,12 @@ fn build(
             algorithm: given,
             digest,
         } => {
+            if given != digest_algorithm {
+                return Err(Error::DigestAlgorithmMismatch {
+                    given,
+                    expected: digest_algorithm,
+                });
+            }
             if digest.len() != given.output_len() {
                 return Err(Error::DigestLength {
                     algorithm: given,
