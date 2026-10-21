@@ -24,6 +24,10 @@ impl SigningTime {
             .map_err(|_| Error::SigningTimeOutOfRange)
     }
 
+    pub(crate) fn from_time(time: Time) -> Self {
+        Self(time.to_date_time())
+    }
+
     /// `UTCTime` up to 2049 and `GeneralizedTime` from 2050, as RFC 5652 asks.
     pub(crate) fn to_time(self) -> Time {
         Time::from(self.0)

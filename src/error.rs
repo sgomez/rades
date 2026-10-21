@@ -54,6 +54,10 @@ pub enum Error {
         /// Digest length in bytes.
         actual: usize,
     },
+    /// The bytes to decode are not a CMS signature.
+    MalformedSignature(String),
+    /// A decoded signature uses a broken digest algorithm.
+    RejectedDigestAlgorithm(String),
     /// A DER structure could not be encoded.
     Encoding(String),
 }
@@ -97,6 +101,8 @@ impl fmt::Display for Error {
                 f,
                 "{algorithm} digest is {actual} bytes long, expected {expected}"
             ),
+            Self::MalformedSignature(reason) => write!(f, "malformed signature: {reason}"),
+            Self::RejectedDigestAlgorithm(name) => write!(f, "rejected digest algorithm {name}"),
             Self::Encoding(reason) => write!(f, "der encoding failed: {reason}"),
         }
     }

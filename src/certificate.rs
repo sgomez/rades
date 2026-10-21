@@ -85,6 +85,10 @@ impl Certificate {
             .map_err(|e| Error::InvalidCertificate(e.to_string()))
     }
 
+    pub(crate) fn new(inner: x509_cert::Certificate) -> Self {
+        Self(inner)
+    }
+
     pub(crate) fn inner(&self) -> &x509_cert::Certificate {
         &self.0
     }

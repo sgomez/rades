@@ -9,6 +9,8 @@ mod error;
 pub mod pkcs1;
 mod signing;
 
+pub use der::asn1::ObjectIdentifier;
+
 pub use algorithm::{DigestAlgorithm, SignatureAlgorithm};
 pub use certificate::Certificate;
 pub use error::Error;
