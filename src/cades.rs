@@ -312,10 +312,15 @@ fn embedded_certificates(
 ) -> Vec<x509_cert::Certificate> {
     match certificates {
         Certificates::Signer => vec![signer.inner().clone()],
-        Certificates::Chain(chain) => std::iter::once(signer)
-            .chain(chain.iter().filter(|c| *c != signer))
-            .map(|c| c.inner().clone())
-            .collect(),
+        Certificates::Chain(chain) => {
+            let mut unique = vec![signer];
+            for certificate in chain {
+                if !unique.contains(&certificate) {
+                    unique.push(certificate);
+                }
+            }
+            unique.into_iter().map(|c| c.inner().clone()).collect()
+        }
         Certificates::None => Vec::new(),
     }
 }
