@@ -19,6 +19,8 @@ pub(crate) const ID_SIGNING_TIME: ObjectIdentifier =
     ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.5");
 pub(crate) const ID_SIGNING_CERTIFICATE_V2: ObjectIdentifier =
     ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.16.2.47");
+pub(crate) const ID_CMS_ALGORITHM_PROTECTION: ObjectIdentifier =
+    ObjectIdentifier::new_unwrap("1.2.840.113549.1.9.52");
 
 pub(crate) const ID_MIME_TYPE: ObjectIdentifier = ObjectIdentifier::new_unwrap("0.4.0.1733.2.1");
 pub(crate) const ID_CONTENT_HINTS: ObjectIdentifier =
@@ -107,4 +109,12 @@ pub(crate) struct IssuerSerial {
 pub(crate) struct DigestInfo {
     pub(crate) digest_algorithm: AlgorithmIdentifierOwned,
     pub(crate) digest: OctetString,
+}
+
+/// RFC 6211, without the MAC algorithm.
+#[derive(Sequence)]
+pub(crate) struct CmsAlgorithmProtection {
+    pub(crate) digest_algorithm: AlgorithmIdentifierOwned,
+    #[asn1(context_specific = "1", tag_mode = "IMPLICIT")]
+    pub(crate) signature_algorithm: AlgorithmIdentifierOwned,
 }
