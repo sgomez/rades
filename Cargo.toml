@@ -32,5 +32,6 @@ p384 = { version = "0.13", features = ["ecdsa"] }
 p521 = { version = "0.13", features = ["ecdsa", "pem"] }
 rand_chacha = "0.3"
 rsa = "0.9"
-sha2_010 = { package = "sha2", version = "0.10" }
+sha2_10 = { version = "0.10", package = "sha2" }
 sha3 = "0.12.0"
+sha3_10 = { version = "0.10", package = "sha3" }

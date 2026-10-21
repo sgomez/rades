@@ -3,9 +3,11 @@
 
 use std::path::PathBuf;
 
-use rades::{Certificate, DataToSign, SignatureValue};
+use rades::{Certificate, DataToSign, DigestAlgorithm, SignatureValue};
+use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 use rsa::pkcs8::DecodePrivateKey;
-use rsa::{Pkcs1v15Sign, RsaPrivateKey};
+use rsa::{Pkcs1v15Sign, Pss, RsaPrivateKey};
 
 pub fn path(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -55,13 +57,11 @@ pub fn sign_ecdsa(signer: &str, data: &DataToSign) -> SignatureValue {
     }
     let pem = std::fs::read_to_string(path(&format!("pki/{signer}.key"))).unwrap();
     let value = if signer.ends_with("p384") {
-        rfc6979!(p384, sha2_010::Sha384, &pem)
+        rfc6979!(p384, sha2_10::Sha384, &pem)
     } else if signer.ends_with("p521") {
         use p521::ecdsa::SigningKey;
         use p521::ecdsa::signature::hazmat::RandomizedPrehashSigner;
         use p521::pkcs8::DecodePrivateKey;
-        use rand_chacha::ChaCha20Rng;
-        use rand_chacha::rand_core::SeedableRng;
         let secret = p521::SecretKey::from_pkcs8_pem(&pem).unwrap();
         let key = SigningKey::from_bytes(&secret.to_bytes()).unwrap();
         let mut rng = ChaCha20Rng::from_seed([0x52; 32]);
@@ -69,9 +69,26 @@ pub fn sign_ecdsa(signer: &str, data: &DataToSign) -> SignatureValue {
             key.sign_prehash_with_rng(&mut rng, &data.digest()).unwrap();
         signature.to_der().as_bytes().to_vec()
     } else {
-        rfc6979!(p256, sha2_010::Sha256, &pem)
+        rfc6979!(p256, sha2_10::Sha256, &pem)
     };
     SignatureValue::new(value)
+}
+
+/// RSA-PSS with a seeded RNG, so the salt and the signature are the same on every run.
+pub fn sign_rsa_pss(signer: &str, data: &DataToSign) -> SignatureValue {
+    let pem = std::fs::read_to_string(path(&format!("pki/{signer}.key"))).unwrap();
+    let key = RsaPrivateKey::from_pkcs8_pem(&pem).unwrap();
+    let scheme = match data.algorithm().digest_algorithm() {
+        DigestAlgorithm::Sha256 => Pss::new::<sha2_10::Sha256>(),
+        DigestAlgorithm::Sha384 => Pss::new::<sha2_10::Sha384>(),
+        DigestAlgorithm::Sha512 => Pss::new::<sha2_10::Sha512>(),
+        DigestAlgorithm::Sha3_256 => Pss::new::<sha3_10::Sha3_256>(),
+        DigestAlgorithm::Sha3_384 => Pss::new::<sha3_10::Sha3_384>(),
+        DigestAlgorithm::Sha3_512 => Pss::new::<sha3_10::Sha3_512>(),
+        _ => unreachable!(),
+    };
+    let mut rng = ChaCha20Rng::seed_from_u64(0);
+    SignatureValue::new(key.sign_with_rng(&mut rng, scheme, &data.digest()).unwrap())
 }
 
 /// Compares with the committed file; `RADES_BLESS=1` rewrites it instead.
