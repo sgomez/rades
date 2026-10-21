@@ -13,6 +13,9 @@ categories = ["cryptography"]
 publish = false
 
 [dependencies]
+der = { version = "0.8", features = ["derive", "oid", "alloc", "pem"] }
+sha2 = "0.11"
+x509-cert = { version = "0.3", default-features = false, features = ["pem"] }
 
 [lints.rust]
 unsafe_code = "forbid"
@@ -20,3 +23,6 @@ missing_docs = "warn"
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+
+[dev-dependencies]
+rsa = "0.9"

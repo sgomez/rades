@@ -28,6 +28,8 @@ DER and CMS, the first signed attributes, and the hashes and signature algorithm
 
 B-01, B-02, B-03, B-04, F-01, F-02, F-03, F-53, A-01, A-02, A-04, A-05, A-06, A-13, C-01, C-03
 
+A-06 covers P-256, P-384 and P-521 here; brainpool and FRP256v1 come with M13, where validating foreign signatures needs them.
+
 ### M2. Signed attributes and policies (EPES)
 
 What the Spanish sites ask for: the AGE policy, commitment types, roles and place.

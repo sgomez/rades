@@ -5,6 +5,7 @@
 
 import es.gob.afirma.signvalidation.SignValidity;
 import es.gob.afirma.signvalidation.SignValiderFactory;
+import es.gob.afirma.signvalidation.ValidateBinarySignature;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,8 +27,8 @@ public class AutoFirma {
                     continue;
                 }
                 String[] entry = line.trim().split("\\s+");
-                if (entry.length != 3) {
-                    throw new IllegalArgumentException("manifest line is not `file indication level`: " + line);
+                if (entry.length != 3 && entry.length != 4) {
+                    throw new IllegalArgumentException("manifest line is not `file indication level [content]`: " + line);
                 }
                 Path signature = dir.resolve(entry[0]);
                 SignValidity.SIGN_DETAIL_TYPE expected = switch (entry[1]) {
@@ -40,7 +41,9 @@ public class AutoFirma {
                     continue;
                 }
                 byte[] bytes = Files.readAllBytes(signature);
-                SignValidity validity = SignValiderFactory.getSignValider(bytes).validate(bytes);
+                SignValidity validity = entry.length == 4
+                        ? ValidateBinarySignature.validate(bytes, Files.readAllBytes(dir.resolve(entry[3])))
+                        : SignValiderFactory.getSignValider(bytes).validate(bytes);
                 checked++;
                 if (validity.getValidity() == expected) {
                     System.out.println("ok       " + signature + ": " + validity.getValidity());
