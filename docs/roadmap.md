@@ -18,6 +18,8 @@ A format item is done when:
 
 The oracles and the API shape, before any format: a generated test PKI, DSS in the CI, the conformance checker and the AutoFirma round-trip.
 
+With no format yet, each oracle is proven on a third-party signature and a tampered copy; every format then exercises the oracles, and B-36, through [Done means](#done-means).
+
 O-01, B-36, C-12, C-13, C-14
 
 ### M1. CMS and CAdES B-B
