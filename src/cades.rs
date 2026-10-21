@@ -21,9 +21,10 @@ use crate::cms::{
     SignerInfo, SigningCertificateV2,
 };
 use crate::ecdsa;
+use crate::signature_policy::ID_SIGNATURE_POLICY;
 use crate::{
-    Certificate, DataToSign, DigestAlgorithm, Error, SignatureAlgorithm, SignatureValue,
-    SigningTime,
+    Certificate, DataToSign, DigestAlgorithm, Error, SignatureAlgorithm, SignaturePolicy,
+    SignatureValue, SigningTime,
 };
 
 /// The content a signature covers.
@@ -93,6 +94,7 @@ pub struct Options {
     content_hints: Option<ContentHints>,
     content_identifier: Option<Vec<u8>>,
     content_reference: Option<ContentReference>,
+    signature_policy: Option<SignaturePolicy>,
     certificates: Certificates,
 }
 
@@ -125,6 +127,13 @@ impl Options {
         self
     }
 
+    /// Adds the `signature-policy-identifier` signed attribute.
+    #[must_use]
+    pub fn signature_policy(mut self, policy: SignaturePolicy) -> Self {
+        self.signature_policy = Some(policy);
+        self
+    }
+
     /// Chooses the certificates embedded in the `SignedData`.
     #[must_use]
     pub fn certificates(mut self, certificates: Certificates) -> Self {
@@ -154,7 +163,8 @@ pub struct PendingSignature {
 /// Phase 1: builds a CAdES B-B up to its data to sign.
 ///
 /// # Errors
-/// [`Error::AlgorithmMismatch`] if `algorithm` does not fit the certificate's key.
+/// [`Error::AlgorithmMismatch`] if `algorithm` does not fit the certificate's key,
+/// [`Error::PolicyHashLength`] if the policy hash does not fit its algorithm.
 pub fn sign(
     content: Content<'_>,
     certificate: &Certificate,
@@ -308,6 +318,12 @@ fn optional_attributes(options: &Options) -> Result<Vec<DerAttribute>, Error> {
                 )?,
             },
         )?);
+    }
+    if let Some(policy) = &options.signature_policy {
+        attributes.push(DerAttribute {
+            oid: ID_SIGNATURE_POLICY,
+            values: SetOfVec::try_from(vec![Any::from_der(&policy.to_der()?)?])?,
+        });
     }
     Ok(attributes)
 }
