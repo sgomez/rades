@@ -17,6 +17,11 @@ pub enum Error {
         /// The certificate's key type.
         key: String,
     },
+    /// Raw PKCS#1 needs an RSA key.
+    NotRsaKey {
+        /// The certificate's key type.
+        key: String,
+    },
     /// The signing time cannot be encoded.
     SigningTimeOutOfRange,
     /// The number of signature values differs from the number of data to sign.
@@ -54,6 +59,12 @@ impl fmt::Display for Error {
                 write!(
                     f,
                     "signature algorithm {algorithm} does not fit the certificate's {key} key"
+                )
+            }
+            Self::NotRsaKey { key } => {
+                write!(
+                    f,
+                    "raw PKCS#1 needs an RSA key, the certificate has an {key} key"
                 )
             }
             Self::SigningTimeOutOfRange => f.write_str("signing time out of range"),

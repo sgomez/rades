@@ -147,6 +147,47 @@ pub fn sign(
     signing_time: SigningTime,
     options: &Options,
 ) -> Result<PendingSignature, Error> {
+    build(
+        content,
+        certificate,
+        algorithm,
+        signing_time,
+        &options.certificates,
+        Some(options),
+    )
+}
+
+/// Phase 1 of `AutoFirma`'s bare CMS: a `SignedData` signing only `content-type`,
+/// `message-digest` and `signing-time`.
+///
+/// # Errors
+/// [`Error::AlgorithmMismatch`] if `algorithm` does not fit the certificate's key.
+pub fn sign_bare(
+    content: Content<'_>,
+    certificate: &Certificate,
+    algorithm: SignatureAlgorithm,
+    signing_time: SigningTime,
+    certificates: &Certificates,
+) -> Result<PendingSignature, Error> {
+    build(
+        content,
+        certificate,
+        algorithm,
+        signing_time,
+        certificates,
+        None,
+    )
+}
+
+/// `options` is `None` for bare CMS.
+fn build(
+    content: Content<'_>,
+    certificate: &Certificate,
+    algorithm: SignatureAlgorithm,
+    signing_time: SigningTime,
+    certificates: &Certificates,
+    options: Option<&Options>,
+) -> Result<PendingSignature, Error> {
     let modulus_len = match (algorithm, certificate.public_key()?) {
         (
             SignatureAlgorithm::RsaPkcs1v15(_) | SignatureAlgorithm::RsaPss(_),
@@ -181,26 +222,28 @@ pub fn sign(
         attribute(ID_CONTENT_TYPE, &ID_DATA)?,
         attribute(ID_MESSAGE_DIGEST, &OctetString::new(content_digest)?)?,
         attribute(ID_SIGNING_TIME, &signing_time.to_time())?,
-        attribute(
+    ];
+    if let Some(options) = options {
+        attributes.push(attribute(
             ID_SIGNING_CERTIFICATE_V2,
             &signing_certificate_v2(certificate, digest_algorithm)?,
-        )?,
-        attribute(
+        )?);
+        attributes.push(attribute(
             ID_CMS_ALGORITHM_PROTECTION,
             &CmsAlgorithmProtection {
                 digest_algorithm: digest_algorithm.identifier(),
                 signature_algorithm: algorithm.identifier()?,
             },
-        )?,
-    ];
-    attributes.extend(optional_attributes(options)?);
+        )?);
+        attributes.extend(optional_attributes(options)?);
+    }
     let signed_attrs = SetOfVec::try_from(attributes)?;
     Ok(PendingSignature {
         data_to_sign: vec![DataToSign::new(signed_attrs.to_der()?, algorithm)],
         signed_attrs,
         embedded_content: embedded,
         certificate: certificate.clone(),
-        embedded: embedded_certificates(certificate, &options.certificates),
+        embedded: embedded_certificates(certificate, certificates),
         modulus_len,
     })
 }

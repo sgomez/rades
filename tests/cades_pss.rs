@@ -167,3 +167,18 @@ fn rsa_pss_does_not_fit_an_ec_key() {
         "signature algorithm RSA-PSS with SHA-256 does not fit the certificate's EC key"
     );
 }
+
+#[test]
+fn bare_cms_names_rsa_pss_with_its_parameters() {
+    let pending = cades::sign_bare(
+        Content::Detached(&common::read("cades/content.txt")),
+        &common::certificate("signer-rsa"),
+        SignatureAlgorithm::RsaPss(DigestAlgorithm::Sha256),
+        SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
+        &cades::Certificates::Signer,
+    )
+    .unwrap();
+    let (_, oid, salt_len, _) = DIGESTS[0];
+    let identifier = tlv(0x30, &pss_identifier_body(oid, salt_len));
+    assert_eq!(occurrences(&complete(pending), &identifier), 1);
+}

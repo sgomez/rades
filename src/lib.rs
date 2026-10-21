@@ -5,6 +5,7 @@ pub mod cades;
 mod certificate;
 mod cms;
 mod error;
+pub mod pkcs1;
 mod signing;
 
 pub use algorithm::{DigestAlgorithm, SignatureAlgorithm};
