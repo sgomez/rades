@@ -214,6 +214,22 @@ fn der_wrap(tag: u8, content: &[u8]) -> Vec<u8> {
     out
 }
 
+/// RFC 4055 `RSASSA-PSS-params`: hash and MGF1 with NULL parameters, salt as long as the digest.
+fn pss_params(digest_oid: &str, salt_len: usize) -> Vec<u8> {
+    let mut hash = oid(digest_oid).to_der().unwrap();
+    hash.extend([5, 0]);
+    let hash = der_wrap(0x30, &hash);
+    let mut mgf1 = oid("1.2.840.113549.1.1.8").to_der().unwrap();
+    mgf1.extend(&hash);
+    let mut body = der_wrap(0xa0, &hash);
+    body.extend(der_wrap(0xa1, &der_wrap(0x30, &mgf1)));
+    body.extend(der_wrap(
+        0xa2,
+        &der_wrap(0x02, &[u8::try_from(salt_len).unwrap()]),
+    ));
+    der_wrap(0x30, &body)
+}
+
 /// PKCS#1 v1.5 `DigestInfo`, built here from the digest's OID.
 fn digest_info(digest_oid: &str, hash: &[u8]) -> Vec<u8> {
     let mut algorithm = oid(digest_oid).to_der().unwrap();
@@ -348,10 +364,18 @@ fn round_trip(case: &Case) {
     let signer = SIGNERS[case.signer];
     let digest = DIGESTS[case.digest];
     let (digest_oid, rsa_oid, ecdsa_oid) = OIDS[case.digest];
-    let (algorithm, signature_oid) = match (case.signer, case.pss) {
-        (0, false) => (SignatureAlgorithm::RsaPkcs1v15(digest), rsa_oid),
-        (0, true) => (SignatureAlgorithm::RsaPss(digest), ID_RSASSA_PSS),
-        _ => (SignatureAlgorithm::Ecdsa(digest), ecdsa_oid),
+    let (algorithm, signature_oid, signature_parameters) = match (case.signer, case.pss) {
+        (0, false) => (
+            SignatureAlgorithm::RsaPkcs1v15(digest),
+            rsa_oid,
+            Some(vec![5, 0]),
+        ),
+        (0, true) => (
+            SignatureAlgorithm::RsaPss(digest),
+            ID_RSASSA_PSS,
+            Some(pss_params(digest_oid, hash(digest, &[]).len())),
+        ),
+        _ => (SignatureAlgorithm::Ecdsa(digest), ecdsa_oid, None),
     };
     let input = if case.attached {
         Content::Attached(&case.content)
@@ -385,6 +409,10 @@ fn round_trip(case: &Case) {
     };
     assert_eq!(info.digest_algorithm().oid(), oid(digest_oid));
     assert_eq!(info.signature_algorithm().oid(), oid(signature_oid));
+    assert_eq!(
+        info.signature_algorithm().parameters(),
+        signature_parameters.as_deref()
+    );
     assert_eq!(
         info.message_digest(),
         Some(hash(digest, &case.content).as_slice())
