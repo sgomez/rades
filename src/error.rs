@@ -38,6 +38,13 @@ pub enum Error {
         /// Signature value length in bytes.
         actual: usize,
     },
+    /// The certificate's EC key is on a curve other than P-256, P-384 or P-521.
+    UnsupportedCurve {
+        /// The curve's object identifier.
+        curve: String,
+    },
+    /// An ECDSA signature value is not an `ECDSA-Sig-Value` within the curve's order size.
+    InvalidEcdsaSignature(String),
     /// A precomputed digest is not as long as its algorithm's output.
     DigestLength {
         /// The algorithm the caller named.
@@ -75,6 +82,13 @@ impl fmt::Display for Error {
                 f,
                 "signature value is {actual} bytes long, the RSA modulus {expected}"
             ),
+            Self::UnsupportedCurve { curve } => write!(
+                f,
+                "unsupported elliptic curve {curve}, expected P-256, P-384 or P-521"
+            ),
+            Self::InvalidEcdsaSignature(reason) => {
+                write!(f, "malformed ecdsa signature value: {reason}")
+            }
             Self::DigestLength {
                 algorithm,
                 expected,

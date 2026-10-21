@@ -91,6 +91,8 @@ impl fmt::Display for DigestAlgorithm {
 pub enum SignatureAlgorithm {
     /// RSASSA-PKCS1-v1_5 (RFC 8017).
     RsaPkcs1v15(DigestAlgorithm),
+    /// ECDSA (FIPS 186-5) on P-256, P-384 or P-521, the signature as a DER `ECDSA-Sig-Value`.
+    Ecdsa(DigestAlgorithm),
 }
 
 impl SignatureAlgorithm {
@@ -98,22 +100,38 @@ impl SignatureAlgorithm {
     #[must_use]
     pub fn digest_algorithm(self) -> DigestAlgorithm {
         match self {
-            Self::RsaPkcs1v15(digest) => digest,
+            Self::RsaPkcs1v15(digest) | Self::Ecdsa(digest) => digest,
         }
     }
 
     pub(crate) fn identifier(self) -> AlgorithmIdentifierOwned {
-        let Self::RsaPkcs1v15(digest) = self;
+        let (oid, parameters) = match self {
+            Self::RsaPkcs1v15(digest) => (
+                match digest {
+                    DigestAlgorithm::Sha256 => "1.2.840.113549.1.1.11",
+                    DigestAlgorithm::Sha384 => "1.2.840.113549.1.1.12",
+                    DigestAlgorithm::Sha512 => "1.2.840.113549.1.1.13",
+                    DigestAlgorithm::Sha3_256 => "2.16.840.1.101.3.4.3.14",
+                    DigestAlgorithm::Sha3_384 => "2.16.840.1.101.3.4.3.15",
+                    DigestAlgorithm::Sha3_512 => "2.16.840.1.101.3.4.3.16",
+                },
+                Some(Any::from(Null)),
+            ),
+            Self::Ecdsa(digest) => (
+                match digest {
+                    DigestAlgorithm::Sha256 => "1.2.840.10045.4.3.2",
+                    DigestAlgorithm::Sha384 => "1.2.840.10045.4.3.3",
+                    DigestAlgorithm::Sha512 => "1.2.840.10045.4.3.4",
+                    DigestAlgorithm::Sha3_256 => "2.16.840.1.101.3.4.3.10",
+                    DigestAlgorithm::Sha3_384 => "2.16.840.1.101.3.4.3.11",
+                    DigestAlgorithm::Sha3_512 => "2.16.840.1.101.3.4.3.12",
+                },
+                None,
+            ),
+        };
         AlgorithmIdentifierOwned {
-            oid: ObjectIdentifier::new_unwrap(match digest {
-                DigestAlgorithm::Sha256 => "1.2.840.113549.1.1.11",
-                DigestAlgorithm::Sha384 => "1.2.840.113549.1.1.12",
-                DigestAlgorithm::Sha512 => "1.2.840.113549.1.1.13",
-                DigestAlgorithm::Sha3_256 => "2.16.840.1.101.3.4.3.14",
-                DigestAlgorithm::Sha3_384 => "2.16.840.1.101.3.4.3.15",
-                DigestAlgorithm::Sha3_512 => "2.16.840.1.101.3.4.3.16",
-            }),
-            parameters: Some(Any::from(Null)),
+            oid: ObjectIdentifier::new_unwrap(oid),
+            parameters,
         }
     }
 }
@@ -122,6 +140,7 @@ impl fmt::Display for SignatureAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::RsaPkcs1v15(digest) => write!(f, "RSA PKCS#1 v1.5 with {digest}"),
+            Self::Ecdsa(digest) => write!(f, "ECDSA with {digest}"),
         }
     }
 }

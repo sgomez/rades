@@ -36,10 +36,11 @@ key() { # name genpkey-options...
 issue() { # name common-name extensions parent
   local name=$1 cn=$2 ext=$3 parent=$4
   [[ -e "$name.crt" ]] && return
+  not_before=$(openssl x509 -in "$parent.crt" -noout -startdate -dateopt iso_8601 | sed 's/^notBefore=//; s/[-: ]//g')
   printf '%s\n' "$ext" >"$work/$name.ext"
   openssl req -new -key "$name.key" -subj "$SUBJECT_BASE/CN=$cn" -out "$work/$name.csr"
   openssl x509 -req -in "$work/$name.csr" -CA "$parent.crt" -CAkey "$parent.key" \
-    -CAcreateserial -CAserial "$work/serial" -sha384 -days "$DAYS" \
+    -CAcreateserial -CAserial "$work/serial" -sha384 -not_before "$not_before" -days "$DAYS" \
     -extfile "$work/$name.ext" -out "$name.crt" 2>/dev/null
 }
 
@@ -60,15 +61,26 @@ issue signer-rsa "rades test signer RSA" "$(signer_ext)" intermediate
 key signer-ecdsa -algorithm EC -pkeyopt ec_paramgen_curve:P-256
 issue signer-ecdsa "rades test signer ECDSA" "$(signer_ext)" intermediate
 
+key signer-ecdsa-p384 -algorithm EC -pkeyopt ec_paramgen_curve:P-384
+issue signer-ecdsa-p384 "rades test signer ECDSA P-384" "$(signer_ext)" intermediate
+
+key signer-ecdsa-p521 -algorithm EC -pkeyopt ec_paramgen_curve:P-521
+issue signer-ecdsa-p521 "rades test signer ECDSA P-521" "$(signer_ext)" intermediate
+
+key signer-ecdsa-brainpool -algorithm EC -pkeyopt ec_paramgen_curve:brainpoolP256r1
+issue signer-ecdsa-brainpool "rades test signer ECDSA brainpoolP256r1" "$(signer_ext)" intermediate
+
+signers=(signer-rsa signer-ecdsa signer-ecdsa-p384 signer-ecdsa-p521 signer-ecdsa-brainpool)
+
 cat intermediate.crt root.crt >"$work/chain.pem"
 
-for signer in signer-rsa signer-ecdsa; do
+for signer in "${signers[@]}"; do
   [[ -e "$signer.p12" ]] || openssl pkcs12 -export -inkey "$signer.key" -in "$signer.crt" \
     -certfile "$work/chain.pem" -name "$signer" \
     -passout "pass:$P12_PASSWORD" -out "$signer.p12"
 done
 
-for signer in signer-rsa signer-ecdsa; do
+for signer in "${signers[@]}"; do
   openssl verify -x509_strict -CAfile root.crt -untrusted intermediate.crt "$signer.crt" >/dev/null ||
     { echo "chain of $signer does not verify up to the root" >&2; exit 1; }
 done

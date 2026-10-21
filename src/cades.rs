@@ -13,6 +13,7 @@ use crate::cms::{
     ID_SIGNING_CERTIFICATE_V2, ID_SIGNING_TIME, IssuerAndSerialNumber, IssuerSerial, SignedData,
     SignerInfo, SigningCertificateV2,
 };
+use crate::ecdsa;
 use crate::{
     Certificate, DataToSign, DigestAlgorithm, Error, SignatureAlgorithm, SignatureValue,
     SigningTime,
@@ -125,6 +126,13 @@ impl Options {
     }
 }
 
+/// What phase 2 expects of the signature value.
+#[derive(Debug, Clone, Copy)]
+enum ValueShape {
+    Rsa { modulus_len: usize },
+    Ecdsa { order_len: usize },
+}
+
 /// Phase 1 done: the data to sign, waiting for its signature value.
 #[derive(Debug)]
 pub struct PendingSignature {
@@ -133,7 +141,7 @@ pub struct PendingSignature {
     embedded_content: Option<Vec<u8>>,
     certificate: Certificate,
     embedded: Vec<x509_cert::Certificate>,
-    modulus_len: usize,
+    value_shape: ValueShape,
 }
 
 /// Phase 1: builds a CAdES B-B up to its data to sign.
@@ -188,8 +196,16 @@ fn build(
     certificates: &Certificates,
     options: Option<&Options>,
 ) -> Result<PendingSignature, Error> {
-    let modulus_len = match (algorithm, certificate.public_key()?) {
-        (SignatureAlgorithm::RsaPkcs1v15(_), PublicKey::Rsa { modulus_len }) => modulus_len,
+    let value_shape = match (algorithm, certificate.public_key()?) {
+        (SignatureAlgorithm::RsaPkcs1v15(_), PublicKey::Rsa { modulus_len }) => {
+            ValueShape::Rsa { modulus_len }
+        }
+        (SignatureAlgorithm::Ecdsa(_), PublicKey::Ec { curve }) => ValueShape::Ecdsa {
+            order_len: curve.order_len(),
+        },
+        (SignatureAlgorithm::Ecdsa(_), PublicKey::UnsupportedCurve(curve)) => {
+            return Err(Error::UnsupportedCurve { curve });
+        }
         (_, key) => {
             return Err(Error::AlgorithmMismatch {
                 algorithm,
@@ -241,7 +257,7 @@ fn build(
         embedded_content: embedded,
         certificate: certificate.clone(),
         embedded: embedded_certificates(certificate, certificates),
-        modulus_len,
+        value_shape,
     })
 }
 
@@ -340,11 +356,15 @@ impl PendingSignature {
                 actual: values.len(),
             });
         };
-        if value.as_bytes().len() != self.modulus_len {
-            return Err(Error::SignatureValueLength {
-                expected: self.modulus_len,
-                actual: value.as_bytes().len(),
-            });
+        match self.value_shape {
+            ValueShape::Rsa { modulus_len } if value.as_bytes().len() != modulus_len => {
+                return Err(Error::SignatureValueLength {
+                    expected: modulus_len,
+                    actual: value.as_bytes().len(),
+                });
+            }
+            ValueShape::Rsa { .. } => {}
+            ValueShape::Ecdsa { order_len } => ecdsa::check(value.as_bytes(), order_len)?,
         }
         let algorithm = self.data_to_sign[0].algorithm();
         let digest_algorithm = algorithm.digest_algorithm();
