@@ -8,6 +8,9 @@
 //DEPS eu.europa.ec.joinup.sd-dss:dss-cms-object:6.5.1
 //DEPS org.slf4j:slf4j-nop:2.0.17
 
+import eu.europa.esig.dss.enumerations.DigestAlgorithm;
+import eu.europa.esig.dss.model.DSSDocument;
+import eu.europa.esig.dss.model.DigestDocument;
 import eu.europa.esig.dss.model.FileDocument;
 import eu.europa.esig.dss.simplereport.SimpleReport;
 import eu.europa.esig.dss.spi.DSSUtils;
@@ -43,7 +46,7 @@ public class Dss {
                     throw new IllegalArgumentException("manifest line is not `file indication level [content]`: " + line);
                 }
                 Path signature = dir.resolve(entry[0]);
-                File content = entry.length == 4 ? dir.resolve(entry[3]).toFile() : null;
+                DSSDocument content = entry.length == 4 ? detachedContent(dir, entry[3]) : null;
                 Verdict verdict = verdict(signature.toFile(), content, policy, verifier);
                 String expected = entry[1] + " " + entry[2];
                 checked++;
@@ -78,13 +81,24 @@ public class Dss {
         return verifier;
     }
 
+    /** A plain file, or `digest:<algorithm>:<file>` for a DigestDocument of that file's digest. */
+    private static DSSDocument detachedContent(Path dir, String column) throws Exception {
+        if (!column.startsWith("digest:")) {
+            return new FileDocument(dir.resolve(column).toFile());
+        }
+        String[] parts = column.split(":", 3);
+        DigestAlgorithm algorithm = DigestAlgorithm.forName(parts[1].replace("-", ""));
+        FileDocument file = new FileDocument(dir.resolve(parts[2]).toFile());
+        return new DigestDocument(algorithm, file.getDigestValue(algorithm));
+    }
+
     private record Verdict(String outcome, String detail) {}
 
-    private static Verdict verdict(File signature, File content, File policy, CommonCertificateVerifier verifier) {
+    private static Verdict verdict(File signature, DSSDocument content, File policy, CommonCertificateVerifier verifier) {
         SignedDocumentValidator validator = SignedDocumentValidator.fromDocument(new FileDocument(signature));
         validator.setCertificateVerifier(verifier);
         if (content != null) {
-            validator.setDetachedContents(List.of(new FileDocument(content)));
+            validator.setDetachedContents(List.of(content));
         }
         SimpleReport report = validator.validateDocument(policy).getSimpleReport();
         List<String> ids = report.getSignatureIdList();

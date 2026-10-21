@@ -23,6 +23,15 @@ use crate::{
 pub enum Content<'a> {
     /// Signed but not embedded: the verifier gets it apart.
     Detached(&'a [u8]),
+    /// Signed and embedded in the signature.
+    Attached(&'a [u8]),
+    /// Signed through a digest the caller computed, as a detached signature.
+    Digest {
+        /// The algorithm that produced `digest`.
+        algorithm: DigestAlgorithm,
+        /// The digest of the content.
+        digest: &'a [u8],
+    },
 }
 
 /// CAdES options beyond the signature algorithm and time.
@@ -35,6 +44,7 @@ pub struct Options {}
 pub struct PendingSignature {
     data_to_sign: Vec<DataToSign>,
     signed_attrs: SetOfVec<Attribute>,
+    embedded_content: Option<Vec<u8>>,
     certificate: Certificate,
     modulus_len: usize,
 }
@@ -60,14 +70,27 @@ pub fn sign(
             });
         }
     };
-    let Content::Detached(content) = content;
     let digest_algorithm = algorithm.digest_algorithm();
+    let (content_digest, embedded) = match content {
+        Content::Detached(bytes) => (digest_algorithm.digest(bytes), None),
+        Content::Attached(bytes) => (digest_algorithm.digest(bytes), Some(bytes.to_vec())),
+        Content::Digest {
+            algorithm: given,
+            digest,
+        } => {
+            if digest.len() != given.output_len() {
+                return Err(Error::DigestLength {
+                    algorithm: given,
+                    expected: given.output_len(),
+                    actual: digest.len(),
+                });
+            }
+            (digest.to_vec(), None)
+        }
+    };
     let signed_attrs = SetOfVec::try_from(vec![
         attribute(ID_CONTENT_TYPE, &ID_DATA)?,
-        attribute(
-            ID_MESSAGE_DIGEST,
-            &OctetString::new(digest_algorithm.digest(content))?,
-        )?,
+        attribute(ID_MESSAGE_DIGEST, &OctetString::new(content_digest)?)?,
         attribute(ID_SIGNING_TIME, &signing_time.to_time())?,
         attribute(
             ID_SIGNING_CERTIFICATE_V2,
@@ -84,6 +107,7 @@ pub fn sign(
     Ok(PendingSignature {
         data_to_sign: vec![DataToSign::new(signed_attrs.to_der()?, algorithm)],
         signed_attrs,
+        embedded_content: embedded,
         certificate: certificate.clone(),
         modulus_len,
     })
@@ -158,7 +182,7 @@ impl PendingSignature {
             digest_algorithms: SetOfVec::try_from(vec![digest_algorithm.identifier()])?,
             encap_content_info: EncapsulatedContentInfo {
                 e_content_type: ID_DATA,
-                e_content: None,
+                e_content: self.embedded_content.map(OctetString::new).transpose()?,
             },
             certificates: Some(SetOfVec::try_from(vec![self.certificate.inner().clone()])?),
             signer_infos: SetOfVec::try_from(vec![signer_info])?,

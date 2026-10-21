@@ -36,6 +36,14 @@ impl DigestAlgorithm {
         }
     }
 
+    pub(crate) fn output_len(self) -> usize {
+        match self {
+            Self::Sha256 | Self::Sha3_256 => 32,
+            Self::Sha384 | Self::Sha3_384 => 48,
+            Self::Sha512 | Self::Sha3_512 => 64,
+        }
+    }
+
     pub(crate) fn oid(self) -> ObjectIdentifier {
         ObjectIdentifier::new_unwrap(match self {
             Self::Sha256 => "2.16.840.1.101.3.4.2.1",
