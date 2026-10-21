@@ -146,3 +146,52 @@ fn phase_2_rejects_an_rsa_value_shorter_than_the_modulus() {
         }
     );
 }
+
+fn sign_with(content: Content<'_>) -> Result<Vec<u8>, Error> {
+    let pending = cades::sign(
+        content,
+        &common::certificate("signer-rsa"),
+        RSA_SHA256,
+        SigningTime::from_unix_seconds(SIGNING_TIME).unwrap(),
+        &Options::default(),
+    )?;
+    let value = common::sign_rsa_pkcs1("signer-rsa", &pending.data_to_sign()[0]);
+    pending.complete(&[value])
+}
+
+#[test]
+fn attached_rsa_sha256_matches_the_golden_vector() {
+    let content = common::read("cades/content.txt");
+    let signature = sign_with(Content::Attached(&content)).unwrap();
+    common::assert_golden("cades/bb-attached-rsa-sha256.p7m", &signature);
+    assert!(
+        signature.windows(content.len()).any(|w| w == content),
+        "the content is embedded"
+    );
+}
+
+#[test]
+fn a_precomputed_digest_signs_like_the_detached_content() {
+    let content = common::read("cades/content.txt");
+    let digest = Sha256::digest(&content).to_vec();
+    let signature = sign_with(Content::Digest {
+        algorithm: DigestAlgorithm::Sha256,
+        digest: &digest,
+    })
+    .unwrap();
+    assert_eq!(signature, sign_with(Content::Detached(&content)).unwrap());
+    common::assert_golden("cades/bb-digest-rsa-sha256.p7m", &signature);
+}
+
+#[test]
+fn a_digest_of_the_wrong_length_is_rejected() {
+    let error = sign_with(Content::Digest {
+        algorithm: DigestAlgorithm::Sha256,
+        digest: &[0; 20],
+    })
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "SHA-256 digest is 20 bytes long, expected 32"
+    );
+}

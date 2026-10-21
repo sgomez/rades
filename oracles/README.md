@@ -2,7 +2,7 @@
 
 Java programs, run with JBang outside the crate, that judge rades' signatures with other implementations. `just oracles` runs them all; the `oracles` CI job runs it on Linux on every PR.
 
-The seam is a directory of signatures with a `manifest.tsv`: one line per signature, `file indication level [content]`, the verdict as DSS's simple report names it (`TOTAL_PASSED CAdES-BASELINE-B`) and, for a detached signature, the file it signs, relative to the manifest. Each oracle checks every entry of every directory in one JVM run and fails naming each signature whose verdict differs. A new directory is one more argument in the `oracles` recipe.
+The seam is a directory of signatures with a `manifest.tsv`: one line per signature, `file indication level [content]`, the verdict as DSS's simple report names it (`TOTAL_PASSED CAdES-BASELINE-B`) and, for a detached signature, the file it signs, relative to the manifest (`digest:SHA-256:<file>` makes DSS validate through a `DigestDocument` of that file's digest; AutoFirma reads the file). Each oracle checks every entry of every directory in one JVM run and fails naming each signature whose verdict differs. A new directory is one more argument in the `oracles` recipe.
 
 ## DSS
 
