@@ -7,9 +7,10 @@ use x509_cert::ext::pkix::name::GeneralName;
 
 use crate::certificate::PublicKey;
 use crate::cms::{
-    ContentInfo, EncapsulatedContentInfo, EssCertIdV2, ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST,
-    ID_SIGNED_DATA, ID_SIGNING_CERTIFICATE_V2, ID_SIGNING_TIME, IssuerAndSerialNumber,
-    IssuerSerial, SignedData, SignerInfo, SigningCertificateV2,
+    CmsAlgorithmProtection, ContentInfo, EncapsulatedContentInfo, EssCertIdV2,
+    ID_CMS_ALGORITHM_PROTECTION, ID_CONTENT_TYPE, ID_DATA, ID_MESSAGE_DIGEST, ID_SIGNED_DATA,
+    ID_SIGNING_CERTIFICATE_V2, ID_SIGNING_TIME, IssuerAndSerialNumber, IssuerSerial, SignedData,
+    SignerInfo, SigningCertificateV2,
 };
 use crate::{
     Certificate, DataToSign, DigestAlgorithm, Error, SignatureAlgorithm, SignatureValue,
@@ -71,6 +72,13 @@ pub fn sign(
         attribute(
             ID_SIGNING_CERTIFICATE_V2,
             &signing_certificate_v2(certificate, digest_algorithm)?,
+        )?,
+        attribute(
+            ID_CMS_ALGORITHM_PROTECTION,
+            &CmsAlgorithmProtection {
+                digest_algorithm: digest_algorithm.identifier(),
+                signature_algorithm: algorithm.identifier(),
+            },
         )?,
     ])?;
     Ok(PendingSignature {
