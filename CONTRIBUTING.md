@@ -21,4 +21,4 @@ Everything goes through the [`justfile`](justfile); `just --list` shows the reci
 
 `just mutants` reports the mutants the tests miss. It is slow; pass `--in-diff` with a diff to mutate only what changed.
 
-The CI mutates the diff of every push to `main` and the whole crate weekly.
+The CI mutates the diff of every push to `main` and the whole crate weekly. Missed mutants land as comments on one open issue.
