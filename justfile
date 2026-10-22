@@ -4,7 +4,7 @@ _default:
     @just --list
 
 # What the CI runs.
-check: fmt-check (file-tokens "--all") lint test
+check: fmt-check (file-tokens "--all") lint doc test
 
 fmt:
     cargo fmt
@@ -19,8 +19,24 @@ file-tokens *flags:
 lint:
     cargo clippy --all-targets -- -D warnings
 
+# Fails on rustdoc warnings, which docs.rs would show.
+doc:
+    RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --quiet
+
 test:
     cargo test --quiet
+
+# Builds the crate from its package, as crates.io will.
+package:
+    cargo publish --dry-run --quiet
+
+# The library on its `rust-version`; the tests may need a newer Rust.
+msrv:
+    #!/usr/bin/env sh
+    set -eu
+    version=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml)
+    rustup toolchain install "$version" --profile minimal
+    cargo +"$version" check --lib
 
 # Advisories, licenses and sources of the dependencies (`deny.toml`).
 deny:

@@ -7,10 +7,9 @@ license = "EUPL-1.2"
 description = "AdES signature formats from the ETSI standards: CAdES, PAdES, XAdES, JAdES and ASiC"
 repository = "https://github.com/sgomez/rades"
 readme = "README.md"
-keywords = ["ades", "eidas", "signature", "etsi", "pades"]
+include = ["/src", "/README.md", "/LICENSE", "/NOTICE", "/CHANGELOG.md"]
+keywords = ["ades", "eidas", "signature", "etsi", "cades"]
 categories = ["cryptography"]
-# Unpublished until the first format is done.
-publish = false
 
 [dependencies]
 der = { version = "0.8", features = ["derive", "oid", "alloc", "pem"] }
