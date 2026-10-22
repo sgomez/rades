@@ -4,6 +4,23 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      rustcrypto:
+        patterns:
+          - der
+          - ecdsa
+          - p256
+          - p384
+          - p521
+          - rand_chacha
+          - rsa
+          - sha2*
+          - sha3*
+          - x509-cert
+    ignore:
+      # rsa 0.9 takes a rand_core 0.6 RNG; lift this when rsa moves on.
+      - dependency-name: rand_chacha
+        versions: [">=0.4"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
