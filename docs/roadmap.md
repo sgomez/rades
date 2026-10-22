@@ -10,7 +10,8 @@ A format item is done when:
 2. DSS validates it at its level with `TOTAL_PASSED` (C-13);
 3. the ETSI Signatures Conformance Checker reports no error (C-12);
 4. the cases of its ETSI test specification are covered, when there is one;
-5. AutoFirma's signatures of the same kind verify in rades, and rades' in AutoFirma (C-14), when AutoFirma has the format.
+5. AutoFirma's signatures of the same kind verify in rades, and rades' in AutoFirma (C-14), when AutoFirma has the format;
+6. the conformance table of the README shows it, in the PR that closes it.
 
 ## Milestones
 
