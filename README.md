@@ -13,13 +13,20 @@ Its first consumer is [rFirma](https://github.com/sgomez/rfirma).
 
 | Format | B-B | B-T | B-LT | B-LTA |
 | --- | --- | --- | --- | --- |
-| CAdES | [partial](https://github.com/sgomez/rades/blob/main/docs/cades-bb-matrix.md) | — | — | — |
+| CAdES | ✅ [conformant](https://github.com/sgomez/rades/blob/main/docs/cades-bb-matrix.md) | — | — | — |
 | PAdES | — | — | — | — |
 | XAdES | — | — | — | — |
 | JAdES | — | — | — | — |
 | ASiC | — | — | — | — |
 
-✅ is done as [the roadmap](https://github.com/sgomez/rades/blob/main/docs/roadmap.md#done-means) defines it: DSS and the ETSI conformance checker validate it, and the cases of its ETSI test specification are covered. Partial links to the requirements matrix, which names what is covered and the milestone of the rest.
+Each cell links to its requirements matrix, which names what is covered and the milestone of the rest.
+
+| Mark | Meaning |
+| --- | --- |
+| — | Not started |
+| 🟡 | In progress: a *shall* row is missing |
+| ✅ | Conformant, as [the roadmap](https://github.com/sgomez/rades/blob/main/docs/roadmap.md#done-means) defines it: every *shall* row covered, DSS and the ETSI conformance checker validate it |
+| ⭐ | Complete: every *should* and *may* row is covered too, or left out on purpose |
 
 The signature and digest algorithms are those of [`SignatureAlgorithm`](https://docs.rs/rades/latest/rades/enum.SignatureAlgorithm.html) and [`DigestAlgorithm`](https://docs.rs/rades/latest/rades/enum.DigestAlgorithm.html). [`cades::decode`](https://docs.rs/rades/latest/rades/cades/fn.decode.html) reads the signers and attributes of a CAdES signature, without validating it.
 
